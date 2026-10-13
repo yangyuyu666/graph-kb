@@ -3,6 +3,7 @@ name = "graph-kb"
 version = "0.0.1"
 description = "Graph-first local knowledge base — Phase 0"
 edition = "2021"
+license = "Apache-2.0"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -67,4 +67,6 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 底层 REST 仅监听 `127.0.0.1` 随机端口，需随机会话 Bearer API Key；Tauri 通过私有 IPC 获取连接。浏览器开发服务的同源 `/api` 代理代填 Key，仅用于本地开发，不是生产认证方案。当前不提供删除、重命名、回收站、搜索、完整图视图、设置、导入导出。
 
-主仓库许可证待确认（Apache-2.0 / MIT）；第三方情况见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+主仓库采用 [Apache-2.0](LICENSE)；第三方组件保留各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+已确认云端 API 采用可配置供应商方向，覆盖 DeepSeek、OpenAI（GPT）、Google Gemini、MiMo 等。具体默认供应商、模型及首次实测配置未定；目前尚未实现这些适配器，不代表已经支持或验证。自动抽取仍默认关闭。
