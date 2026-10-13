@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
-import { ToolError, requireId, requireText } from "./errors.mjs";
+import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
 import { parseEntities } from "./cloud-extractor.mjs";
 import { mvpOperations, mvpMethods } from "./operations.mjs";
 
@@ -358,16 +358,17 @@ export class KnowledgeTools {
       }
     }
   }
-  async writeEdge(type, source, target) {
+  async writeEdge(type, source, target, label) {
     if (type === "SIBLING_OF" && source > target)
       [source, target] = [target, source];
-    await this.store.query(
-      `MATCH (a:Node {id: $source}), (b:Node {id: $target}) MERGE (a)-[:${type}]->(b)`,
-      { source, target },
+    const [edge] = await this.store.query(
+      `MATCH (a:Node {id: $source}), (b:Node {id: $target}) MERGE (a)-[r:${type}]->(b) ${label === undefined ? "" : "SET r.label = $label"} RETURN coalesce(r.label, '') AS label`,
+      { source, target, ...(label === undefined ? {} : { label }) },
     );
-    return { type, source, target };
+    return { type, source, target, id: `${type}:${source}:${target}`, label: edge.label };
   }
-  async createEdge({ type, source, target }) {
+  async createEdge({ type, source, target, label }) {
+    if (label !== undefined) label = edgeLabel(label);
     await this.validateEdge(type, source, target);
     const a = await this.mustNode(source),
       b = await this.mustNode(target);
@@ -389,7 +390,7 @@ export class KnowledgeTools {
           { source },
         );
       }
-      return this.writeEdge(type, source, target);
+      return this.writeEdge(type, source, target, label);
     });
   }
   async neighbors({ id, hops = 1, type }) {

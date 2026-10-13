@@ -96,15 +96,15 @@ const definitions = [
   [
     "create_edge",
     "校验后创建 CHILD_OF 或 SIBLING_OF",
-    { type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id },
+    { type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 } },
     ["type", "source", "target"],
   ],
   ["delete_edge", "删除指定关系", { id }, ["id"]],
   [
     "update_edge",
     "在事务内修正关系",
-    { id, type: string, source: id, target: id },
-    ["id", "type", "source", "target"],
+    { id, type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 } },
+    ["id"],
   ],
   ["list_trash", "列出尚未过期的回收站", {}, []],
   ["restore", "恢复回收站批次与可恢复关系", { id }, ["id"]],
@@ -181,7 +181,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.1.2" },
+      serverInfo: { name: "graph-kb", version: "0.1.3" },
       instructions,
     });
   }

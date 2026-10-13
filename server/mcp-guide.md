@@ -11,6 +11,7 @@ Graph KB 是本地 Markdown 知识管理桌面应用，图谱是底层数据模�
 - 进入知识库后，顶部“图谱 / 目录”切换视图，两种视图不会复制数据。
 - 目录左键选节点，在右侧直接编辑和保存 Markdown；左右分栏可拖动调整宽度。
 - 图谱左键节点打开独立文档窗口。
+- 图谱右键线条 → 编辑边文字 → 保存，文字显示在线条旁；也可从节点的“管理关系 → 修改”填写。留空保存清除文字。
 - 图谱和目录均右键节点打开操作菜单：创建子节点、重命名、关系管理、仅删除当前节点、级联删除、在新窗口打开。
 - 导入和导出位于知识库顶部；回收站用于恢复删除批次；设置用于配置云端自动建图及查看 MCP 连接信息。
 
@@ -29,6 +30,7 @@ MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动�
 
 - CHILD_OF 的 source 是子节点，target 是父节点，即 **子→父**。允许多个父节点，禁止自环、跨知识库关系和从属环。
 - SIBLING_OF 是同库可见顶级节点的平行关系；系统自动维护，以 UUID 排序后只存一条，不必重复创建反向边。它不能代替任意文档引用。
+- 两种边均有 label 文字属性，最多 200 字符，去除首尾空白；空字符串表示无标签。label 只是注释，不是新增语义关系类型，不改变结构约束。自动维护已有平行边不会清空文字；关系因结构变化被删除时其文字也随边移除。JSON 导出/导入及回收站恢复保留标签；旧数据库和旧 JSON 中缺失标签视为空字符串。
 - get_graph 返回可见 nodes/edges，关系有完整 id：`TYPE:sourceUUID:targetUUID`。创建/修改关系返回的端点可能规范化，重新读取图谱取得关系 ID；不要用节点 UUID 调用 delete_edge。
 - get_graph 有 center 时按 1–3 跳无向邻域筛选；query_path 也是无向最短路径，返回边仍保留真实方向。query_neighbors 包括 Concept，但其结果不提供边的完整方向，不能据此判断谁是谁的父节点。无向邻域不是无限深度的“所有后代”。
 - 普通引用写成 `[文档标题](node:实际节点UUID)`，只存正文，不新建关系。backlinks 查反向链接，resolve_links 检查目标；deleted 也可能表示不存在或隐藏 Concept，不保证回收站里一定有记录。
@@ -57,6 +59,17 @@ MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动�
 ### 移动节点与增加另一个父节点
 
 先 `get_graph({kbId})` 查看真实 CHILD_OF 边。只增加归属用 `create_edge({type:"CHILD_OF",source:子UUID,target:新父UUID})`，原父关系保留。替换某个旧父关系用 `update_edge({id:旧关系ID,type:"CHILD_OF",source:子UUID,target:新父UUID})`，服务会原子校验，失败回滚；不要先删节点再重建。删某条父关系用 delete_edge，节点正文保留。多父节点只改用户指定的关系。
+
+### 添加或修改边上的文字
+
+先 get_graph 找到用户指定的边，再用完整关系 ID 修改：
+
+```json
+{"name":"update_edge","arguments":{"id":"<get_graph.edges 中的完整关系ID>","label":"参考资料"}}
+{"name":"get_edge","arguments":{"id":"<同一关系ID>"}}
+```
+
+`update_edge` 只要求 id，省略的 type/source/target/label 保持原值；`label:""` 清除文字。只改文字时不改变边 ID、方向或节点正文。创建边时也可在 create_edge 中传 label；对已有边重复创建而省略 label 时保留原文字。get_edge、get_graph 和 query_path 返回 label。边没有文档 revision 并发保护，同一标签的并发修改按最后一次成功写入为准。
 
 ### 删除与恢复
 
@@ -98,14 +111,14 @@ export_kb 返回 JSON 数据（含 nodes、edges、assets、Markdown files），
 | create_node / get_node | 节点属性、markdown、revision |
 | update_doc | 新 revision、updatedAt、extraction、conceptCount，可能有 warning/cached |
 | rename_node | id、title、新 revision、updatedAt |
-| get_graph / query_path | nodes、edges（关系方向和 ID） |
+| get_graph / query_path | nodes、edges（关系方向、ID 和 label 文字） |
 | query_neighbors | id、title、kind、type、distance 的邻居数组 |
 | search | 节点属性及 excerpt，q 最多 500 字符 |
 | backlinks | 引用目标的可见节点数组 |
 | related | 相关节点及共享概念数量 score |
 | resolve_links | id、state、可用时的 title；ids 最多 1000 项 |
-| get_edge | 关系 id、type、source、target |
-| create_edge / update_edge | type、source、target；之后可刷新图谱 |
+| get_edge | 关系 id、type、source、target、label |
+| create_edge / update_edge | id、type、source、target、label；之后可刷新图谱 |
 | delete_edge | deleted=true |
 | list_trash | 批次 id、kind、title、deletedAt |
 | restore | restored 节点数、skippedEdges 关系 ID 数组 |

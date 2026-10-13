@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix } from "node:path";
-import { ToolError, requireId, requireText } from "./errors.mjs";
+import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
 const fail = (message, code = "INVALID_INPUT") =>
   new ToolError(code, message, "检查输入并刷新后重试");
 const types = ["Page", "Tag", "File", "Person", "Task", "Concept"];
@@ -18,7 +18,7 @@ export const mvpMethods = {
   },
   async allEdges(kbId) {
     const edges = await this.store.query(
-      "MATCH (a:Node {kbId: $kbId})-[r]->(b:Node) RETURN a.id AS source, b.id AS target, label(r) AS type",
+      "MATCH (a:Node {kbId: $kbId})-[r]->(b:Node) RETURN a.id AS source, b.id AS target, label(r) AS type, coalesce(r.label, '') AS label",
       { kbId },
     );
     return edges.map((e) => ({ ...e, id: edgeId(e) }));
@@ -229,8 +229,16 @@ export const mvpMethods = {
       return { deleted: true };
     });
   },
-  async updateEdge({ id, type, source, target }) {
-    await this.getEdge({ id });
+  async updateEdge({ id, type, source, target, label }) {
+    const existing = await this.getEdge({ id });
+    type ??= existing.type;
+    source ??= existing.source;
+    target ??= existing.target;
+    label = label === undefined ? existing.label : edgeLabel(label);
+    if (type === "SIBLING_OF" && source > target)
+      [source, target] = [target, source];
+    if (type === existing.type && source === existing.source && target === existing.target)
+      return this.writeEdge(type, source, target, label);
     const [oldType, oldSource, oldTarget] = (id ?? "").split(":");
     if (!["CHILD_OF", "SIBLING_OF"].includes(oldType)) throw fail("原关系无效");
     const old = await this.mustNode(oldSource);
@@ -243,7 +251,7 @@ export const mvpMethods = {
         { source: oldSource, target: oldTarget },
       );
       await this.validateEdge(type, source, target);
-      const result = await this.writeEdge(type, source, target);
+      const result = await this.writeEdge(type, source, target, label);
       await this.syncSiblings(node.kbId);
       return result;
     });
@@ -405,7 +413,7 @@ export const mvpMethods = {
             skipped.push(edge.id);
             continue;
           }
-          await this.writeEdge(edge.type, edge.source, edge.target);
+          await this.writeEdge(edge.type, edge.source, edge.target, edge.label);
         }
         await this.syncSiblings(snapshot.kbId);
         await this.store.query("MATCH (t:Trash {id:$id}) DELETE t", { id });
@@ -732,6 +740,7 @@ export const mvpMethods = {
         throw fail("导入关系无效");
       return {
         ...e,
+        label: e.label === undefined ? "" : edgeLabel(e.label),
         source: mapping.get(e.source),
         target: mapping.get(e.target),
       };
@@ -762,7 +771,7 @@ export const mvpMethods = {
             (a.type === "CHILD_OF" ? -1 : 1) - (b.type === "CHILD_OF" ? -1 : 1),
         )) {
           await this.validateEdge(e.type, e.source, e.target);
-          await this.writeEdge(e.type, e.source, e.target);
+          await this.writeEdge(e.type, e.source, e.target, e.label);
         }
         for (const { data, ...asset } of assets)
           await this.store.query(
@@ -803,7 +812,7 @@ export const mvpMethods = {
             to = e.target === source ? target : e.target;
           if (from !== to) {
             await this.validateEdge(e.type, from, to);
-            await this.writeEdge(e.type, from, to);
+            await this.writeEdge(e.type, from, to, e.label);
           }
         }
         await this.store.query("MATCH (n:Node {id:$id}) DETACH DELETE n", {

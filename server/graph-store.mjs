@@ -40,14 +40,21 @@ export class GraphStore {
     for (const ddl of [
       "CREATE NODE TABLE IF NOT EXISTS KnowledgeBase(id STRING, name STRING, PRIMARY KEY(id))",
       "CREATE NODE TABLE IF NOT EXISTS Node(id STRING, kbId STRING, kind STRING, title STRING, conceptKey STRING, updatedAt STRING, revision INT64, PRIMARY KEY(id))",
-      "CREATE REL TABLE IF NOT EXISTS CHILD_OF(FROM Node TO Node)",
-      "CREATE REL TABLE IF NOT EXISTS SIBLING_OF(FROM Node TO Node)",
+      "CREATE REL TABLE IF NOT EXISTS CHILD_OF(FROM Node TO Node, label STRING DEFAULT '')",
+      "CREATE REL TABLE IF NOT EXISTS SIBLING_OF(FROM Node TO Node, label STRING DEFAULT '')",
       "CREATE NODE TABLE IF NOT EXISTS FileCommit(id STRING, PRIMARY KEY(id))",
       "CREATE NODE TABLE IF NOT EXISTS Trash(id STRING, kind STRING, title STRING, deletedAt STRING, snapshot STRING, PRIMARY KEY(id))",
       "CREATE NODE TABLE IF NOT EXISTS Asset(id STRING, ownerId STRING, name STRING, mime STRING, PRIMARY KEY(id))",
       "CREATE NODE TABLE IF NOT EXISTS ExtractCache(id STRING, signature STRING, entities STRING, PRIMARY KEY(id))",
     ])
       await this.query(ddl);
+    // Upgrade existing databases without replacing relationships or their IDs.
+    // Each ALTER is atomic; inspecting each table also handles interrupted upgrades.
+    for (const type of ["CHILD_OF", "SIBLING_OF"]) {
+      const properties = await this.query(`CALL table_info('${type}') RETURN *`);
+      if (!properties.some((property) => property.name === "label"))
+        await this.query(`ALTER TABLE ${type} ADD label STRING DEFAULT ''`);
+    }
     await this.recover();
     return this;
   }

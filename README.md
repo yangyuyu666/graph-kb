@@ -91,6 +91,10 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 关系 ID 为 TYPE:sourceUUID:targetUUID，放入 URL 时编码。文档保存/重命名携带 revision。错误含 code、message、suggestion；过期保存 409，已删除文档 410。
 
+**边文字（0.1.3）：** 图谱中右键线条 →“编辑边文字”→ 保存，文字会显示在线条旁；目录中也可右键节点 → 管理关系 → 修改。每条边有可选 `label` 属性，最多 200 字符，留空清除；仅为注释，不改变 CHILD_OF / SIBLING_OF 结构语义。旧库启动时自动补充属性，原关系和正文保留。JSON 导入导出、Markdown ZIP 中的 graph.json、回收站恢复均保留标签。
+
+REST 创建边可带 `label`；`PATCH /api/edges/{编码后的关系ID}` 仅传 `{"label":"参考资料"}` 即可修改文字，`{"label":""}` 清除。MCP 同样使用 `update_edge({id,label:"参考资料"})`。修改时省略字段保持原值；重复创建已有边时省略 label 保留原文字。get_graph/get_edge/query_path 返回边的 label。更新 MCP 程序后需让客户端重新加载工具定义，固定连接 JSON 无需改动。
+
 底层 REST 仅监听 127.0.0.1 随机端口，需当前会话 Bearer Key；Tauri 通过 IPC 取得连接。开发服务同源 /api 代理仅用于本地开发。
 
 **连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。0.1.2 起配置固定，只含启动路径和 `GRAPH_KB_CONNECTION_FILE`，不含临时令牌。应用重启后，已运行的 MCP 在下一次调用自动读取新会话，无需重新复制 JSON 或重启 MCP。应用关闭时可读取使用手册，业务操作需先打开应用。更换安装位置或数据目录后才需更新配置。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。

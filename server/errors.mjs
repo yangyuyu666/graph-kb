@@ -14,3 +14,8 @@ export function requireId(value) {
     throw new ToolError('INVALID_ID', '节点或知识库 ID 无效', '使用接口返回的 UUID');
   return value;
 }
+export function edgeLabel(value) {
+  if (typeof value !== 'string' || value.length > 200)
+    throw new ToolError('INVALID_INPUT', '关系文字须为不超过 200 字符的文本', '传入文字；空字符串表示清除标签');
+  return value.trim();
+}

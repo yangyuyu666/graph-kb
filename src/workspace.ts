@@ -426,7 +426,8 @@ export async function renderWorkspace(
               ? "父节点"
               : "子节点") +
             " · " +
-            other?.title,
+            other?.title +
+            (edge.label ? " · " + edge.label : ""),
         ),
         button("修改", () => {
           m.dialog.close();
@@ -486,8 +487,8 @@ export async function renderWorkspace(
     };
     m.show();
   }
-  function edgeDialog(source: string, existing?: GraphEdge) {
-    const m = modal(existing ? "修改关系" : "添加关系");
+  function edgeDialog(source: string, existing?: GraphEdge, labelOnly = false) {
+    const m = modal(labelOnly ? "编辑边文字" : existing ? "修改关系" : "添加关系");
     const from = e("select"),
       to = e("select"),
       type = e("select");
@@ -503,9 +504,17 @@ export async function renderWorkspace(
       new Option("平行：仅顶级节点", "SIBLING_OF"),
     );
     type.value = existing?.type ?? "CHILD_OF";
-    field(m.form, "关系类型", type);
-    field(m.form, "起点（子节点）", from);
-    field(m.form, "终点（父节点）", to);
+    if (!labelOnly) {
+      field(m.form, "关系类型", type);
+      field(m.form, "起点（子节点）", from);
+      field(m.form, "终点（父节点）", to);
+    }
+    const label = e("input");
+    label.maxLength = 200;
+    label.value = existing?.label ?? "";
+    label.placeholder = "例如：参考资料；留空可清除";
+    field(m.form, "边文字（可选）", label);
+    m.submit.textContent = "保存";
     m.form.onsubmit = async (event) => {
       event.preventDefault();
       m.submit.disabled = true;
@@ -515,7 +524,9 @@ export async function renderWorkspace(
             ? `/api/edges/${encodeURIComponent(existing.id)}`
             : "/api/edges",
           existing ? "PATCH" : "POST",
-          { type: type.value, source: from.value, target: to.value },
+          labelOnly
+            ? { label: label.value }
+            : { type: type.value, source: from.value, target: to.value, label: label.value },
         );
         await reload();
         m.dialog.close();
@@ -578,7 +589,7 @@ export async function renderWorkspace(
     canvas.setAttribute("aria-label", "知识图谱画布");
     const legend = e(
       "div",
-      "实线箭头：从属（子 → 父）　虚线：平行",
+      "实线箭头：从属（子 → 父）　虚线：平行　右键边可编辑文字",
       "graph-legend",
     );
     const buttons = e("div", undefined, "graph-actions");
@@ -626,6 +637,16 @@ export async function renderWorkspace(
           {
             selector: "edge",
             style: {
+              label: "data(label)",
+              "font-size": 12,
+              color: "#514775",
+              "text-wrap": "wrap",
+              "text-max-width": "160px",
+              "text-background-color": "#fafafd",
+              "text-background-opacity": 0.9,
+              "text-background-padding": "3px",
+              "text-events": "yes",
+              "text-margin-y": -10,
               width: 1.5,
               "line-color": "#b1a9da",
               "curve-style": "bezier",
@@ -673,6 +694,29 @@ export async function renderWorkspace(
             original?.clientX ?? box.left + pos.x,
             original?.clientY ?? box.top + pos.y,
           );
+      });
+      cy.on("cxttap", "edge", (event) => {
+        const original = event.originalEvent as MouseEvent | undefined;
+        original?.preventDefault();
+        const box = canvas.getBoundingClientRect();
+        const pos = event.renderedPosition;
+        const edge = event.target.data() as GraphEdge;
+        contextMenu(
+          original?.clientX ?? box.left + pos.x,
+          original?.clientY ?? box.top + pos.y,
+          "关系",
+          [
+            {
+              label: "编辑边文字",
+              icon: "✎",
+              run: async () => {
+                const latest = await api<GraphEdge>("/api/edges/" + encodeURIComponent(edge.id));
+                edgeDialog(latest.source, latest, true);
+              },
+            },
+            { label: "修改关系", icon: "◇", run: () => edgeDialog(edge.source, edge) },
+          ],
+        );
       });
       canvas.oncontextmenu = (event) => event.preventDefault();
       if (!data.nodes.length) status.textContent = "当前筛选下没有节点";

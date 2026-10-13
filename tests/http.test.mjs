@@ -41,6 +41,14 @@ test('REST 使用同一工具层：鉴权、持久化、结构化校验错误、
   const error = (await badEdge.json()).error;
   assert.equal(error.code, 'SELF_EDGE');
   assert.ok(error.suggestion);
+  const child = await (await request('/api/nodes', 'POST', { kbId: kb.id, title: '子', parentId: page.id })).json();
+  const edge = await (await request('/api/edges', 'POST', { type: 'CHILD_OF', source: child.id, target: page.id, label: 'REST 创建' })).json();
+  assert.equal(edge.label, 'REST 创建');
+  const edgePath = `/api/edges/${encodeURIComponent(edge.id)}`;
+  assert.equal((await (await request(edgePath, 'PATCH', { label: 'REST 更新' })).json()).label, 'REST 更新');
+  assert.equal((await (await request(edgePath)).json()).label, 'REST 更新');
+  assert.equal((await request(edgePath, 'PATCH', { label: null })).status, 400);
+  assert.equal((await (await request(edgePath, 'PATCH', { label: '' })).json()).label, '');
   assert.equal((await request(`/api/nodes/${page.id}`, 'DELETE')).status, 200);
   assert.equal((await request(`/api/nodes/${page.id}`)).status, 410);
   assert.equal((await request('/api/kbs', 'POST', { name: 'bad content type' }, { 'Content-Type': 'text/plain' })).status, 415);

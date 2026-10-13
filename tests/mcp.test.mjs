@@ -86,6 +86,17 @@ test("MCP stdio 外部进程：初始化、工具发现、实际 CRUD、规则�
   const b = (
     await tool("create_node", { kbId: kb.id, title: "子", parentId: a.id })
   ).data;
+  await t.test("MCP 可发现标签参数，局部修改、读取和清空边文字", async () => {
+    const schema = catalog.find((entry) => entry.name === "update_edge").inputSchema;
+    assert.deepEqual(schema.required, ["id"]);
+    assert.equal(schema.properties.label.maxLength, 200);
+    const edge = (await tool("create_edge", { type: "CHILD_OF", source: b.id, target: a.id, label: "创建时文字" })).data;
+    assert.equal(edge.label, "创建时文字");
+    assert.equal((await tool("update_edge", { id: edge.id, label: "MCP 文字" })).data.label, "MCP 文字");
+    assert.equal((await tool("get_edge", { id: edge.id })).data.label, "MCP 文字");
+    assert.equal((await tool("get_graph", { kbId: kb.id })).data.edges[0].label, "MCP 文字");
+    assert.equal((await tool("update_edge", { id: edge.id, label: "" })).data.label, "");
+  });
   assert.equal(
     (await tool("update_doc", { id: b.id, revision: 0, markdown: "MCP 正文" }))
       .isError,

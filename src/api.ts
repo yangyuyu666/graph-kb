@@ -43,6 +43,7 @@ export interface PageNode {
 }
 export interface GraphEdge {
   id: string;
+  label: string;
   source: string;
   target: string;
   type: "CHILD_OF" | "SIBLING_OF";

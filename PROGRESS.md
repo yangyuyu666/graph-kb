@@ -1,12 +1,24 @@
 # 开发进度
 
-更新：2026-10-13。项目版本：0.1.2。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-13。项目版本：0.1.3。工作目录：C:/Users/27783/graph-kb。
+
+## 边文字标签（0.1.3）
+
+- 用户确认增加边文字；两种关系均增加 `label` 字符串属性，最多 200 字符，去除首尾空白，空字符串清除。标签只是注释，不引入新边类型、不改变层级或节点正文。
+- 图谱右键线条 → 编辑边文字 → 保存；文字显示在线条旁，可随图谱导出 PNG。目录中右键节点 → 管理关系 → 修改，也能设置文字；添加关系时可同时填写。
+- REST 创建边支持 label；PATCH 边和 MCP update_edge 只需 id/label 即可局部更新。省略字段保持原值；get_graph/get_edge/query_path 及创建/更新返回标签。MCP 工具说明和使用手册同步更新。
+- Kùzu 启动时逐表检查并迁移旧库，保留关系 ID/端点/正文，可重复执行并恢复中断的升级。自动维护已有平行边不覆盖文字；JSON/Markdown ZIP 结构清单导出、JSON 导入、回收站恢复保留标签；旧备份中缺失 label 兼容为空字符串。
+- 验证：后端 40 项通过，包含实际 Kùzu 旧结构升级、部分升级后重启、标签持久化、自动关系维护、校验失败回滚、导入导出、恢复、REST 和真实 MCP stdio。完整浏览器 UI 11 项通过；独立运行时 1 项通过。已构建 0.1.3 NSIS 安装包，并使用独立数据目录、空 PATH 验证发布版桌面程序的实际右键边、保存显示和删除恢复。
+- 用户确认保存关闭后已更新 `.tools/installed-smoke`，安装器退出码 0。默认数据目录和固定 MCP JSON 不变，未向用户知识库写入测试数据。更新后客户端需重新加载 MCP 工具定义，才能发现可选 label 与局部修改参数。
+- 边仍无文档 revision 并发保护，同一标签按最后一次成功写入为准。标签随关系删除而移除；回收站仅在关系可恢复时恢复其文字。
+
+截图：[浏览器边文字](docs/evidence/edge-label.png)、[桌面边文字](docs/evidence/tauri-graph.png)。
 
 ## 当前结果
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.1.2** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据目录标识保持不变，不迁走用户数据。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；验收后已启动默认数据目录的应用并迁移 Codex 固定连接配置。
+已生成并实际安装 Windows x64 **0.1.3** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据目录标识保持不变，不迁走用户数据。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际安装版验收后已关闭测试窗口，用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -55,11 +67,11 @@ Windows x64；Node 24.19.0、Kùzu 0.11.3、Milkdown 7.22.3、Cytoscape.js 3.34.
 
 | 检查 | 结果 |
 |---|---|
-| 后端测试 | 36 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、导入导出、附件、缓存/合并、MCP 手册和操作流程、跨应用重启自动重连、Windows 会话文件 ACL |
-| Edge 界面测试 | 0.1.2 针对设置页 1 项通过：固定 JSON 导出和既有云设置流程。0.1.1 的 9 项全套加 1 项快速保存回归历史通过；此次未重复整套 |
+| 后端测试 | 40 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、导入导出、附件、缓存/合并、MCP 手册和操作流程、跨应用重启自动重连、Windows 会话文件 ACL、边标签及旧库迁移 |
+| Edge 界面测试 | 全套 11 项通过，包含右键边文字编辑、保存后显示、刷新保留及清空；其余编辑、目录、节点菜单、设置和导入导出回归通过 |
 | 独立运行时 | 1 项通过，复制出仓库、空 PATH、实际保存和重启回读 |
 | TypeScript / Vite | 构建通过；主 bundle 约 1.97 MB、gzip 624 KB，存在体积提示 |
-| Tauri release / NSIS | 0.1.2 构建成功，安装退出 0 |
+| Tauri release / NSIS | 0.1.3 构建成功，安装退出 0；实际安装版独立数据验收通过，包含边文字编辑和删除恢复 |
 | 已安装原生应用 | 空 PATH、临时工作目录、隔离数据；真实 IPC、目录右侧编辑保存、右键创建子节点、Cytoscape 画布、删除恢复、中文保存、新窗口链接、设置默认关闭、关闭退出通过 |
 | npm 许可元数据 | 368 个锁条目，无 GPL/AGPL/LGPL/未知项；随包收集 294 项非 dev npm 许可及 242 项 Windows Rust 许可 |
 | npm audit --omit=dev | 0 vulnerabilities |
@@ -78,7 +90,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.1.2_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.2_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.1.3_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.3_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 
@@ -86,7 +98,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 | 阻塞 / 未验项 | 影响与处理 |
 |---|---|
-| 当前 Codex 客户端需一次性加载固定连接配置 | 已迁移到 GRAPH_KB_CONNECTION_FILE，旧端口/令牌已从当前 graph-kb 配置移除；真实新 MCP 子进程验证通过。Codex MCP 设置 Restart 一次后加载；之后普通应用重启自动恢复，无需再复制 JSON |
+| 当前客户端需重新加载更新后的 MCP 工具定义 | 固定 GRAPH_KB_CONNECTION_FILE 配置不变；重新加载 MCP 后可发现 label 参数及 update_edge 的局部更新。普通应用重启仍自动恢复连接，无需再复制 JSON |
 | 无用户选定的真实模型/API Key | DeepSeek、GPT、Gemini、MiMo 协议已模拟验证，但真实抽取质量、费用、速度未验。在应用设置填写即可；不用在聊天发 Key |
 | 无签名证书、商店账户与干净 Windows VM | 无法完成商店分发和跨机器发行验收；不阻塞本机 MVP |
 | 无已确认的规模/性能指标 | 全文为本地扫描、顶级平行边为两两建边，只有功能规模测试；大图、大批附件、断电、跨平台未验收 |

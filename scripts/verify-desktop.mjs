@@ -227,6 +227,25 @@ try {
     windowsVirtualKeyCode: 27,
   });
   await until(() => main.evaluate('!document.querySelector("[role=menu]")'));
+  const edgePoint = await main.evaluate(
+    `(() => { const canvas=document.querySelector('#graph-canvas');const p=canvas._cyreg.cy.edges()[0].renderedMidpoint();const r=canvas.getBoundingClientRect();return {x:r.left+p.x,y:r.top+p.y}; })()`,
+  );
+  for (const type of ["mousePressed", "mouseReleased"])
+    await main.send("Input.dispatchMouseEvent", {
+      type, button: "right", buttons: type === "mousePressed" ? 2 : 0,
+      clickCount: 1, ...edgePoint,
+    });
+  await until(() => main.evaluate('!!document.querySelector("[role=menuitem][aria-label=编辑边文字]")'));
+  await main.evaluate('document.querySelector("[role=menuitem][aria-label=编辑边文字]").click()');
+  await until(() => main.evaluate('!!document.querySelector("dialog input")'));
+  await main.evaluate(`document.querySelector('dialog input').value='原生边文字'; document.querySelector('dialog form').requestSubmit()`);
+  await until(() => main.evaluate('!document.querySelector("dialog")'));
+  assert.equal(
+    await main.evaluate(`document.querySelector('#graph-canvas')._cyreg.cy.edges()[0].style('label')`),
+    "原生边文字",
+  );
+  const labeledGraph = await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`);
+  assert.equal(labeledGraph.edges[0].label, "原生边文字");
   const graphShot = await main.send("Page.captureScreenshot", {
     format: "png",
   });
@@ -241,6 +260,10 @@ try {
   assert.equal((await main.evaluate(`qaRequest('/api/trash')`)).length, 1);
   await main.evaluate(
     `qaRequest('/api/trash/${deleted.id}/restore', 'POST', {})`,
+  );
+  assert.equal(
+    (await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`)).edges[0].label,
+    "原生边文字",
   );
   assert.equal(
     (await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`)).nodes
@@ -297,7 +320,7 @@ try {
     `setTimeout(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'main'}), 100)`,
   );
   console.log(
-    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
+    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
   );
 } finally {
   for (const connection of connections) connection.close();
