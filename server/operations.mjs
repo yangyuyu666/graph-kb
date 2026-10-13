@@ -278,7 +278,9 @@ export const mvpMethods = {
       JSON.parse(row.snapshot).nodes.some((n) => n.id === id),
     );
   },
-  async trash({ id, kb = false }) {
+  async trash({ id, kb = false, mode = "single" }) {
+    if (!["single", "cascade"].includes(mode))
+      throw fail("删除方式须为 single 或 cascade");
     let knowledgeBase, nodes;
     if (kb) {
       await this.mustKb(id);
@@ -290,6 +292,37 @@ export const mvpMethods = {
     } else {
       const node = await this.mustNode(id);
       nodes = [node];
+      if (mode === "cascade") {
+        const all = await this.allNodes(node.kbId);
+        const parents = (await this.allEdges(node.kbId)).filter(
+          (e) => e.type === "CHILD_OF",
+        );
+        const deleting = new Set([id]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const edge of parents)
+            if (deleting.has(edge.target) && !deleting.has(edge.source)) {
+              deleting.add(edge.source);
+              changed = true;
+            }
+        }
+        // Keep shared descendants, including descendants of a preserved branch.
+        changed = true;
+        while (changed) {
+          changed = false;
+          for (const edge of parents)
+            if (
+              edge.source !== id &&
+              deleting.has(edge.source) &&
+              !deleting.has(edge.target)
+            ) {
+              deleting.delete(edge.source);
+              changed = true;
+            }
+        }
+        nodes = [node, ...all.filter((n) => n.id !== id && deleting.has(n.id))];
+      }
     }
     const kbId = kb ? id : nodes[0].kbId,
       ids = new Set(nodes.map((n) => n.id));
@@ -326,7 +359,11 @@ export const mvpMethods = {
       },
       nodes.map((n) => ({ type: "trash", id: n.id, batchId: batch.id })),
     );
-    return batch;
+    return {
+      ...batch,
+      deletedCount: nodes.length,
+      mode: kb ? "knowledgeBase" : mode,
+    };
   },
   async listTrash() {
     return this.store.query(

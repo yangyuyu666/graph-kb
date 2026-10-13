@@ -19,6 +19,10 @@ export async function renderLibrary(
   const settings = button(
     "◦　设置",
     () => {
+      if (
+        !main.dispatchEvent(new Event("workspace-leave", { cancelable: true }))
+      )
+        return;
       active(settings);
       return renderSettings(main);
     },
@@ -38,6 +42,8 @@ export async function renderLibrary(
     return p;
   }
   async function library() {
+    if (!main.dispatchEvent(new Event("workspace-leave", { cancelable: true })))
+      return;
     active(home);
     main.replaceChildren();
     const header = e("header"),
@@ -134,6 +140,8 @@ export async function renderLibrary(
     draw();
   }
   async function searchPage() {
+    if (!main.dispatchEvent(new Event("workspace-leave", { cancelable: true })))
+      return;
     active(search);
     main.replaceChildren(e("header"));
     main.querySelector("header")!.append(e("h1", "全局搜索"));
@@ -171,6 +179,8 @@ export async function renderLibrary(
     input.focus();
   }
   async function trashPage() {
+    if (!main.dispatchEvent(new Event("workspace-leave", { cancelable: true })))
+      return;
     active(trash);
     main.replaceChildren(
       e("h1", "回收站"),

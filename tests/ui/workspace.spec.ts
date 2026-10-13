@@ -21,11 +21,9 @@ test("目录子节点创建、折叠、图谱切换、路径与子图导出", as
     page.getByRole("tab", { name: "目录", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await page
-    .getByRole("button", {
-      name: "在 图知识库应用开发 下新建子节点",
-      exact: true,
-    })
-    .click();
+    .getByRole("button", { name: "图知识库应用开发", exact: true })
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "新建子节点", exact: true }).click();
   await expect(page.getByLabel("创建位置")).toHaveValue(root.id);
   await page.getByLabel("文档标题").fill("回顾问候");
   await page.getByRole("button", { name: "创建", exact: true }).click();
@@ -94,12 +92,19 @@ test("界面重命名、软删除、已删除链接占位和回收站恢复", as
   });
   await page.goto("/");
   await page.getByRole("button", { name: /回收站验证/ }).click();
-  await page.getByRole("button", { name: "管理 被引用", exact: true }).click();
-  await page.getByRole("button", { name: "重命名", exact: true }).click();
+  await page
+    .getByRole("button", { name: "被引用", exact: true })
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "重命名", exact: true }).click();
   await page.getByLabel("文档标题").fill("改名后");
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await expect(page.locator("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "删除", exact: true }).click();
+  await page
+    .getByRole("button", { name: "改名后", exact: true })
+    .click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "仅删除当前节点", exact: true })
+    .click();
   await page.getByRole("button", { name: "移入回收站" }).click();
   await expect(page.locator("dialog")).toHaveCount(0);
   expect((await request.get(`/api/nodes/${b.id}`)).status()).toBe(410);
@@ -141,7 +146,12 @@ test("Markdown 导入、全文搜索、附件保存与 MCP 配置入口", async 
   await expect(page.locator("dialog")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("已导入");
   const popup = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "导入笔记", exact: true }).click();
+  await page
+    .getByRole("button", { name: "导入笔记", exact: true })
+    .click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "在新窗口中打开", exact: true })
+    .click();
   const doc = await popup;
   await expect(doc.locator(".ProseMirror")).toBeVisible();
   await doc.locator("input[type=file]").setInputFiles({

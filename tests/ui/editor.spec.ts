@@ -1,68 +1,108 @@
-import { test, expect } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { test, expect } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 
-test('Milkdown 编辑→REST→Kùzu→Markdown 重读；独立窗口与内部链接', async ({ page, context, request }) => {
+test("Milkdown 编辑→REST→Kùzu→Markdown 重读；独立窗口与内部链接", async ({
+  page,
+  context,
+  request,
+}) => {
   const errors: string[] = [];
-  context.on('page', p => p.on('pageerror', error => errors.push(error.message)));
-  page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
-  await page.getByRole('button', { name: '新建知识库' }).click();
-  await page.getByLabel('知识库名称').fill('Phase 0 验证');
-  await page.getByRole('button', { name: '创建', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Phase 0 验证' })).toBeVisible();
-  await mkdir('docs/evidence', { recursive: true });
-  await page.screenshot({ path: 'docs/evidence/phase0-home.png' });
-  await page.getByRole('button', { name: /Phase 0 验证/ }).click();
-  await page.getByRole('button', { name: '新建顶级节点' }).click();
-  await page.getByLabel('文档标题').fill('知识图谱笔记');
-  await page.getByRole('button', { name: '创建', exact: true }).click();
-  const popup = page.waitForEvent('popup');
-  await page.getByRole('button', { name: '知识图谱笔记', exact: true }).click();
+  context.on("page", (p) =>
+    p.on("pageerror", (error) => errors.push(error.message)),
+  );
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await page.getByRole("button", { name: "新建知识库" }).click();
+  await page.getByLabel("知识库名称").fill("Phase 0 验证");
+  await page.getByRole("button", { name: "创建", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Phase 0 验证" }),
+  ).toBeVisible();
+  await mkdir("docs/evidence", { recursive: true });
+  await page.screenshot({ path: "docs/evidence/phase0-home.png" });
+  await page.getByRole("button", { name: /Phase 0 验证/ }).click();
+  await page.getByRole("button", { name: "新建顶级节点" }).click();
+  await page.getByLabel("文档标题").fill("知识图谱笔记");
+  await page.getByRole("button", { name: "创建", exact: true }).click();
+  const popup = page.waitForEvent("popup");
+  await page
+    .getByRole("button", { name: "知识图谱笔记", exact: true })
+    .click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "在新窗口中打开", exact: true })
+    .click();
   const document = await popup;
-  await expect(document.locator('.ProseMirror')).toBeVisible();
-  await document.locator('.ProseMirror').fill('中文知识图谱与 RAG 的研究笔记。');
-  await document.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(document.getByRole('status')).toHaveText('已保存到本地 · 图节点已同步');
-  const id = new URL(document.url()).searchParams.get('node');
+  await expect(document.locator(".ProseMirror")).toBeVisible();
+  await document
+    .locator(".ProseMirror")
+    .fill("中文知识图谱与 RAG 的研究笔记。");
+  await document.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(document.getByRole("status")).toHaveText(
+    "已保存到本地 · 图节点已同步",
+  );
+  const id = new URL(document.url()).searchParams.get("node");
   const saved = await (await request.get(`/api/nodes/${id}`)).json();
-  expect(saved.markdown).toContain('中文知识图谱与 RAG');
+  expect(saved.markdown).toContain("中文知识图谱与 RAG");
   expect(saved.revision).toBe(1);
-  const target = await (await request.post('/api/nodes', { data: { kbId: saved.kbId, title: '关联文档' } })).json();
+  const target = await (
+    await request.post("/api/nodes", {
+      data: { kbId: saved.kbId, title: "关联文档" },
+    })
+  ).json();
   const rich = `# 知识图谱\n\n中文 **加粗** 与 RAG。\n\n- [x] 编辑器验证\n\n| 项目 | 结果 |\n| --- | --- |\n| Kùzu | 通过 |\n\n\`\`\`js\nconst graph = true;\n\`\`\`\n\n[关联文档](node:${target.id})\n`;
-  await request.patch(`/api/nodes/${id}`, { data: { markdown: rich, revision: 1 } });
+  await request.patch(`/api/nodes/${id}`, {
+    data: { markdown: rich, revision: 1 },
+  });
   await document.reload();
-  await expect(document.locator('.ProseMirror h1')).toHaveText('知识图谱');
-  await expect(document.getByRole('table')).toBeVisible();
+  await expect(document.locator(".ProseMirror h1")).toHaveText("知识图谱");
+  await expect(document.getByRole("table")).toBeVisible();
   await expect(document.locator(`a[href="node:${target.id}"]`)).toBeVisible();
-  await document.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(document.getByRole('status')).toHaveText('已保存到本地 · 图节点已同步');
+  await document.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(document.getByRole("status")).toHaveText(
+    "已保存到本地 · 图节点已同步",
+  );
   const roundTrip = await (await request.get(`/api/nodes/${id}`)).json();
   expect(roundTrip.markdown).toContain(`node:${target.id}`);
-  expect(roundTrip.markdown).toContain('**加粗**');
-  expect(roundTrip.markdown).toContain('[x]');
-  expect(roundTrip.markdown).toContain('const graph = true;');
-  const relations = await (await request.get(`/api/nodes/${id}/neighbors`)).json();
+  expect(roundTrip.markdown).toContain("**加粗**");
+  expect(roundTrip.markdown).toContain("[x]");
+  expect(roundTrip.markdown).toContain("const graph = true;");
+  const relations = await (
+    await request.get(`/api/nodes/${id}/neighbors`)
+  ).json();
   expect(relations).toHaveLength(1);
-  expect(relations[0].type).toBe('SIBLING_OF'); // top-level structure only, no reference edge
-  await document.screenshot({ path: 'docs/evidence/phase0-editor.png', fullPage: true });
-  const linkedWindow = document.waitForEvent('popup');
+  expect(relations[0].type).toBe("SIBLING_OF"); // top-level structure only, no reference edge
+  await document.screenshot({
+    path: "docs/evidence/phase0-editor.png",
+    fullPage: true,
+  });
+  const linkedWindow = document.waitForEvent("popup");
   await document.locator(`a[href="node:${target.id}"]`).click();
   const linked = await linkedWindow;
-  await expect(linked.locator('#title')).toHaveText('关联文档');
+  await expect(linked.locator("#title")).toHaveText("关联文档");
   expect(page.isClosed()).toBe(false);
   expect(document.isClosed()).toBe(false);
   expect(errors).toEqual([]);
 });
 
-test('过期窗口保存提示冲突，保留当前草稿', async ({ page, request }) => {
-  const kb = await (await request.post('/api/kbs', { data: { name: '冲突测试' } })).json();
-  const node = await (await request.post('/api/nodes', { data: { kbId: kb.id, title: '并发文档' } })).json();
+test("过期窗口保存提示冲突，保留当前草稿", async ({ page, request }) => {
+  const kb = await (
+    await request.post("/api/kbs", { data: { name: "冲突测试" } })
+  ).json();
+  const node = await (
+    await request.post("/api/nodes", {
+      data: { kbId: kb.id, title: "并发文档" },
+    })
+  ).json();
   await page.goto(`/?node=${node.id}`);
-  await expect(page.locator('.ProseMirror')).toBeVisible();
-  await page.locator('.ProseMirror').fill('本窗口草稿');
-  await request.patch(`/api/nodes/${node.id}`, { data: { markdown: '另一个窗口已保存', revision: 0 } });
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('文档已被其他窗口修改');
-  await expect(page.locator('.ProseMirror')).toContainText('本窗口草稿');
-  expect((await (await request.get(`/api/nodes/${node.id}`)).json()).markdown).toBe('另一个窗口已保存');
+  await expect(page.locator(".ProseMirror")).toBeVisible();
+  await page.locator(".ProseMirror").fill("本窗口草稿");
+  await request.patch(`/api/nodes/${node.id}`, {
+    data: { markdown: "另一个窗口已保存", revision: 0 },
+  });
+  await page.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("文档已被其他窗口修改");
+  await expect(page.locator(".ProseMirror")).toContainText("本窗口草稿");
+  expect(
+    (await (await request.get(`/api/nodes/${node.id}`)).json()).markdown,
+  ).toBe("另一个窗口已保存");
 });

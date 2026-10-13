@@ -15,9 +15,11 @@ export function documentExtras(
   crepe: Crepe,
   open: (id: string) => Promise<void>,
   status: (text: string) => void,
+  container: HTMLElement,
+  signal: AbortSignal,
 ) {
   const toolbar = e("div", undefined, "document-tools");
-  document.querySelector(".document-meta")!.before(toolbar);
+  container.querySelector(".document-meta")!.before(toolbar);
   const upload = e("input");
   upload.type = "file";
   upload.hidden = true;
@@ -108,7 +110,7 @@ export function documentExtras(
     m.show();
   }
   const links = e("div", undefined, "document-links");
-  document.querySelector(".document")!.append(links);
+  container.querySelector(".document")!.append(links);
   async function refresh() {
     try {
       const [backlinks, related] = await Promise.all([
@@ -132,7 +134,7 @@ export function documentExtras(
     }
   }
   void refresh();
-  window.addEventListener("focus", () => void refresh());
+  window.addEventListener("focus", () => void refresh(), { signal });
   return refresh;
 }
 export async function openAsset(id: string) {

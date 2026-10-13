@@ -143,7 +143,7 @@ export async function startApi(tools, token, port = 0) {
         input = { ...body, id: node[1] };
       } else if (node && req.method === "DELETE") {
         operation = "delete_node";
-        input = { id: node[1] };
+        input = { id: node[1], mode: url.searchParams.get("mode") ?? "single" };
       } else if (kb && req.method === "GET") {
         operation = "get_kb";
         input = { id: kb[1] };

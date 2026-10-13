@@ -800,3 +800,116 @@ input {
   color: #aaa;
   text-decoration: line-through;
 }
+
+.node-context-menu {
+  position: fixed;
+  z-index: 10000;
+  width: 232px;
+  padding: 6px;
+  border: 1px solid #e0dfea;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 8px 28px #20193c26;
+}
+.node-context-menu .menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  padding: 9px 11px;
+  border-radius: 5px;
+  text-align: left;
+  font-size: 13px;
+  color: #292633;
+}
+.node-context-menu .menu-item:hover,
+.node-context-menu .menu-item:focus {
+  background: #f0edff;
+  outline: none;
+}
+.node-context-menu .menu-item.danger-link {
+  color: #b33848;
+}
+.menu-icon {
+  width: 18px;
+  font-size: 16px;
+  text-align: center;
+}
+.menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: #ebe8f3;
+}
+.tree-layout {
+  grid-template-columns: minmax(150px, var(--tree-width, 280px)) 7px minmax(
+      0,
+      1fr
+    );
+  align-items: stretch;
+}
+.tree-layout .tree-panel {
+  border-right: 0;
+  min-width: 0;
+  max-height: calc(100vh - 220px);
+}
+.tree-divider {
+  background: #eeedf2;
+  cursor: col-resize;
+  touch-action: none;
+  transition: background 0.15s;
+  outline-offset: -2px;
+}
+.tree-divider:hover,
+.tree-divider:focus,
+.tree-divider.dragging {
+  background: #b6a8ff;
+}
+.inline-document-pane {
+  min-width: 0;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+  min-height: 500px;
+}
+.inline-document-pane > h2 {
+  margin: 180px 24px 12px;
+  text-align: center;
+  font-size: 19px;
+}
+.inline-document-pane > p {
+  text-align: center;
+  color: #96919d;
+  padding: 0 24px;
+  font-size: 13px;
+}
+.inline-document-pane .document {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  min-height: 500px;
+  max-width: none;
+}
+.inline-document-pane .document header {
+  padding: 18px 20px;
+  gap: 12px;
+}
+.inline-document-pane .document h1 {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.inline-document-pane .document-meta {
+  padding: 12px 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inline-document-pane .document-tools {
+  padding: 10px 20px;
+}
+.inline-document-pane .milkdown .ProseMirror {
+  padding: 24px 30px;
+  min-height: 280px;
+}
+.inline-document-pane .document-links {
+  padding: 16px 20px;
+}

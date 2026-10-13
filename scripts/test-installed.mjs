@@ -12,6 +12,7 @@ const data = await mkdtemp(resolve(".graph-kb/native-mvp-"));
 const env = {
   ...process.env,
   GRAPH_KB_DATA_DIR: data,
+  WEBVIEW2_USER_DATA_FOLDER: resolve(data, "webview"),
   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: "--remote-debugging-port=9223",
 };
 for (const key of Object.keys(env))

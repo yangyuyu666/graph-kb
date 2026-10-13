@@ -57,8 +57,8 @@ const definitions = [
   ],
   [
     "delete_node",
-    "节点和正文进入回收站；仅移除该节点，不删除子节点",
-    { id },
+    "节点和正文进入回收站；single 仅当前节点；cascade 删除后代但保留有外部父节点的共享分支",
+    { id, mode: { type: "string", enum: ["single", "cascade"] } },
     ["id"],
   ],
   [
@@ -171,7 +171,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "graph-kb", version: "0.1.0" },
+      serverInfo: { name: "graph-kb", version: "0.1.1" },
     });
   }
   if (!initialized)

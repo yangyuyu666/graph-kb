@@ -377,3 +377,51 @@ test("重复 JSON 导入复用概念，带标题的内部链接正确重映射",
   );
   assert.equal(copied.created, 2);
 });
+
+test("级联删除保留外部父节点共享分支，整批恢复原关系及正文", async (t) => {
+  const { run, node, kb, root } = await setup(t);
+  const parent = await node("待删除根"),
+    outside = await node("外部父节点");
+  const owned = await node("独占子节点", parent.id),
+    grand = await node("独占孙节点", owned.id);
+  const shared = await node("共享子节点", parent.id),
+    kept = await node("共享分支下级", shared.id);
+  await run("create_edge", {
+    type: "CHILD_OF",
+    source: shared.id,
+    target: outside.id,
+  });
+  await run("create_edge", {
+    type: "CHILD_OF",
+    source: kept.id,
+    target: owned.id,
+  });
+  await run("update_doc", {
+    id: grand.id,
+    revision: 0,
+    markdown: "整批恢复正文",
+  });
+  const removed = await run("delete_node", { id: parent.id, mode: "cascade" });
+  assert.equal(removed.deletedCount, 3);
+  for (const n of [parent, owned, grand])
+    await assert.rejects(run("get_node", { id: n.id }), {
+      code: "NODE_DELETED",
+    });
+  for (const n of [outside, shared, kept])
+    assert.equal((await run("get_node", { id: n.id })).id, n.id);
+  assert.equal((await run("list_trash")).length, 1);
+  await run("restore", { id: removed.id });
+  assert.equal((await run("get_graph", { kbId: kb.id })).nodes.length, 6);
+  assert.equal(
+    (await run("get_node", { id: grand.id })).markdown,
+    "整批恢复正文",
+  );
+  assert.ok(
+    (await run("get_graph", { kbId: kb.id })).edges.some(
+      (e) => e.source === shared.id && e.target === parent.id,
+    ),
+  );
+  await assert.rejects(run("delete_node", { id: parent.id, mode: "invalid" }), {
+    code: "INVALID_INPUT",
+  });
+});

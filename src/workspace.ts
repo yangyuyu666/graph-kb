@@ -1,3 +1,5 @@
+import { contextMenu, closeContextMenu } from "./context-menu";
+import { mountDocument } from "./document-view";
 import cytoscape, { type Core } from "cytoscape";
 import { zipSync, strToU8 } from "fflate";
 import {
@@ -30,11 +32,62 @@ export async function renderWorkspace(
     selected: string | undefined,
     cy: Core | undefined;
   const collapsed = new Set<string>();
+  const documentPane = e("div", undefined, "inline-document-pane");
+  documentPane.append(
+    e("h2", "选择一个节点"),
+    e("p", "左键在此编辑文档；右键节点打开操作菜单。"),
+  );
+  let editor: Awaited<ReturnType<typeof mountDocument>> | undefined;
+  let editorAbort = new AbortController(),
+    opening = 0;
+  let treeWidth = 280;
+  const leaveGuard = (event: Event) => {
+    if (editor && !editor.canLeave()) event.preventDefault();
+  };
+  main.addEventListener("workspace-leave", leaveGuard);
+  async function showDocument(id: string, force = false) {
+    if (editor?.id === id && !force) return;
+    if (editor && !editor.canLeave()) return;
+    const version = ++opening;
+    editorAbort.abort();
+    editorAbort = new AbortController();
+    const signal = editorAbort.signal;
+    const old = editor;
+    editor = undefined;
+    await old?.destroy();
+    if (disposed || version !== opening) return;
+    selected = id;
+    main
+      .querySelectorAll<HTMLElement>(".tree-item")
+      .forEach((item) =>
+        item
+          .querySelector(".tree-row")
+          ?.classList.toggle("selected", item.dataset.nodeId === id),
+      );
+    try {
+      const mounted = await mountDocument(documentPane, id, open, {
+        embedded: true,
+        signal,
+      });
+      if (disposed || version !== opening) {
+        await mounted.destroy();
+        return;
+      }
+      editor = mounted;
+    } catch (error) {
+      if (!signal.aborted) notify(error);
+    }
+  }
+
   let disposed = false,
     loadVersion = 0;
   const observer = new MutationObserver(() => {
     if (!main.isConnected || !main.contains(shell)) {
       disposed = true;
+      editorAbort.abort();
+      void editor?.destroy();
+      main.removeEventListener("workspace-leave", leaveGuard);
+      closeContextMenu();
       cy?.destroy();
       observer.disconnect();
     }
@@ -96,6 +149,7 @@ export async function renderWorkspace(
     return graph.nodes.find((n) => n.id === selected);
   }
   function render() {
+    closeContextMenu();
     cy?.destroy();
     cy = undefined;
     panel.replaceChildren();
@@ -188,35 +242,29 @@ export async function renderWorkspace(
       );
       if (descendants.length)
         item.setAttribute("aria-expanded", String(!collapsed.has(node.id)));
-      const doc = button(
-        "",
-        () => {
-          selected = node.id;
-          markSelection();
-          return open(node.id);
-        },
-        "node tree-document",
-      );
+      const doc = button("", () => showDocument(node.id), "node tree-document");
       doc.title = node.title;
       doc.append(
         e("span", descendants.length ? "▱" : "▤", "tree-icon"),
         e("span", node.title, "node-title"),
       );
       doc.setAttribute("aria-label", node.title);
-      const add = button("+", () => createNode(node.id), "tree-add");
-      add.setAttribute("aria-label", `在 ${node.title} 下新建子节点`);
-      add.title = "新建子节点";
-      const menu = button(
-        "⋯",
-        () => {
-          selected = node.id;
-          markSelection();
-          renderInspector(inspector);
-        },
-        "tree-more",
-      );
-      menu.setAttribute("aria-label", `管理 ${node.title}`);
-      row.append(toggle, doc, add, menu);
+      row.oncontextmenu = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        nodeMenu(node, event.clientX, event.clientY);
+      };
+      doc.onkeydown = (event) => {
+        if (
+          event.key === "ContextMenu" ||
+          (event.shiftKey && event.key === "F10")
+        ) {
+          event.preventDefault();
+          const r = doc.getBoundingClientRect();
+          nodeMenu(node, r.left + 20, r.bottom);
+        }
+      };
+      row.append(toggle, doc);
       item.append(row);
       if (descendants.length && !collapsed.has(node.id)) {
         const group = e("div", undefined, "tree-children");
@@ -231,101 +279,174 @@ export async function renderWorkspace(
       treeTarget.append(item);
     }
     let treeTarget: HTMLElement = tree;
-    const inspector = e("div", undefined, "node-inspector");
+
     for (const node of graph.nodes.filter((n) => !hasParent.has(n.id)))
       branch(node, new Set());
     if (!graph.nodes.length)
       tree.append(e("p", "还没有节点。先创建一个顶级节点。", "hint"));
     else if (!visible.size) tree.append(e("p", "没有匹配的节点", "hint"));
-    panel.append(tree, inspector);
-    renderInspector(inspector);
+    const divider = e("div", undefined, "tree-divider");
+    divider.tabIndex = 0;
+    divider.setAttribute("role", "separator");
+    divider.setAttribute("aria-orientation", "vertical");
+    divider.setAttribute("aria-label", "调整目录宽度");
+    const resize = (value: number) => {
+      const max = Math.max(150, panel.clientWidth - 280);
+      treeWidth = Math.max(150, Math.min(value, max));
+      panel.style.setProperty("--tree-width", treeWidth + "px");
+      divider.setAttribute("aria-valuenow", String(Math.round(treeWidth)));
+    };
+    divider.onpointerdown = (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      divider.setPointerCapture(event.pointerId);
+      divider.classList.add("dragging");
+    };
+    divider.onpointermove = (event) => {
+      if (divider.hasPointerCapture(event.pointerId))
+        resize(event.clientX - panel.getBoundingClientRect().left);
+    };
+    divider.onpointerup = (event) => {
+      if (divider.hasPointerCapture(event.pointerId))
+        divider.releasePointerCapture(event.pointerId);
+      divider.classList.remove("dragging");
+    };
+    divider.onlostpointercapture = () => divider.classList.remove("dragging");
+    divider.onkeydown = (event) => {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        resize(treeWidth + (event.key === "ArrowLeft" ? -20 : 20));
+      }
+    };
+    panel.append(tree, divider, documentPane);
+    resize(treeWidth);
     function renderTreeAgain() {
       panel.replaceChildren();
       renderTree();
     }
-    function markSelection() {
-      tree
-        .querySelectorAll<HTMLElement>(".tree-item")
-        .forEach((item) =>
-          item
-            .querySelector(".tree-row")
-            ?.classList.toggle("selected", item.dataset.nodeId === selected),
-        );
-      renderInspector(inspector);
-    }
   }
-  function renderInspector(container: HTMLElement) {
-    container.replaceChildren();
-    const node = chosen();
-    if (!node) {
-      container.className = "node-inspector empty";
-      container.append(
-        e("span", "▤"),
-        e("h2", "选择一个节点"),
-        e("p", "点击文档名在独立窗口打开；＋ 在该节点下创建文档。"),
-      );
-      return;
-    }
-    container.className = "node-inspector";
-    container.append(
-      e("p", kindNames[node.kind] ?? node.kind, "eyebrow"),
-      e("h2", node.title),
+  function nodeMenu(node: PageNode, x: number, y: number) {
+    contextMenu(x, y, node.title, [
+      { label: "新建子节点", icon: "＋", run: () => createNode(node.id) },
+      {
+        label: "重命名",
+        icon: "✎",
+        run: () =>
+          nameDialog(
+            "重命名节点",
+            "文档标题",
+            async (title) => {
+              if (editor?.id === node.id && !editor.canLeave())
+                throw Error("请先保存当前文档");
+              const latest = await api<PageNode>("/api/nodes/" + node.id);
+              await api("/api/nodes/" + node.id, "PATCH", {
+                title,
+                revision: latest.revision,
+              });
+              if (editor?.id === node.id) {
+                await editor.destroy();
+                editor = undefined;
+                await showDocument(node.id);
+              }
+              await reload();
+            },
+            node.title,
+          ),
+      },
+      { label: "管理关系", icon: "◇", run: () => relations(node) },
+      {
+        label: "仅删除当前节点",
+        icon: "▱",
+        danger: true,
+        separator: true,
+        run: () => deleteNode(node, "single"),
+      },
+      {
+        label: "级联删除",
+        icon: "▱",
+        danger: true,
+        run: () => deleteNode(node, "cascade"),
+      },
+      {
+        label: "在新窗口中打开",
+        icon: "↗",
+        separator: true,
+        run: () => open(node.id),
+      },
+    ]);
+  }
+  function deleteNode(node: PageNode, mode: "single" | "cascade") {
+    confirmTrash(
+      node.title,
+      async () => {
+        if (editor && !editor.canLeave()) throw Error("请先保存当前文档");
+        const result = await api<{ deletedCount: number }>(
+          "/api/nodes/" + node.id + "?mode=" + mode,
+          "DELETE",
+        );
+        const currentId = editor?.id;
+        const next = await api<GraphData>("/api/kbs/" + kb.id + "/graph");
+        if (currentId && !next.nodes.some((n) => n.id === currentId)) {
+          editorAbort.abort();
+          await editor?.destroy();
+          editor = undefined;
+          selected = undefined;
+          documentPane.replaceChildren(
+            e("h2", "节点已移入回收站"),
+            e("p", "选择其他节点继续编辑，或在回收站恢复。"),
+          );
+        }
+        await reload();
+        status.textContent =
+          "已将 " + result.deletedCount + " 个节点移入回收站";
+      },
+      mode === "cascade"
+        ? "将删除此节点及其后代。共享给外部父节点的后代及其下级会保留；删除内容在回收站保留 30 天，可整批恢复。"
+        : "只删除当前节点并移除关联边；子节点保留，失去所有父节点的子节点提升为顶级。30 天内可恢复。",
     );
-    const actions = e("div", undefined, "node-actions");
-    actions.append(
-      button("打开文档", () => open(node.id), "primary"),
-      button("新建子节点", () => createNode(node.id)),
-      button("重命名", () =>
-        nameDialog(
-          "重命名节点",
-          "文档标题",
-          async (title) => {
-            const latest = await api<PageNode>(`/api/nodes/${node.id}`);
-            await api(`/api/nodes/${node.id}`, "PATCH", {
-              title,
-              revision: latest.revision,
-            });
-            await reload();
-          },
-          node.title,
-        ),
-      ),
-      button(
-        "删除",
-        () =>
-          confirmTrash(node.title, async () => {
-            await api(`/api/nodes/${node.id}`, "DELETE");
-            selected = undefined;
-            await reload();
-          }),
-        "danger-link",
-      ),
-    );
-    container.append(actions);
-    container.append(e("h3", "关系"));
+  }
+  function relations(node: PageNode) {
+    const m = modal("管理关系 · " + node.title);
+    m.submit.remove();
     const edges = graph.edges.filter(
       (edge) => edge.source === node.id || edge.target === node.id,
     );
-    if (!edges.length) container.append(e("p", "还没有关系", "hint"));
+    if (!edges.length) m.form.append(e("p", "还没有关系"));
     for (const edge of edges) {
-      const row = e("div", undefined, "relation-row");
       const other = graph.nodes.find(
         (n) => n.id === (edge.source === node.id ? edge.target : edge.source),
-      )!;
+      );
+      const row = e("div", undefined, "relation-row");
       row.append(
         e(
           "span",
-          `${edge.type === "SIBLING_OF" ? "平行" : edge.source === node.id ? "父节点" : "子节点"} · ${other.title}`,
+          (edge.type === "SIBLING_OF"
+            ? "平行"
+            : edge.source === node.id
+              ? "父节点"
+              : "子节点") +
+            " · " +
+            other?.title,
         ),
-        button("修改", () => edgeDialog(node.id, edge)),
+        button("修改", () => {
+          m.dialog.close();
+          edgeDialog(node.id, edge);
+        }),
         button("移除", async () => {
-          await api(`/api/edges/${encodeURIComponent(edge.id)}`, "DELETE");
+          await api("/api/edges/" + encodeURIComponent(edge.id), "DELETE");
+          m.dialog.close();
           await reload();
         }),
       );
-      container.append(row);
+      m.form.append(row);
     }
-    container.append(button("添加关系", () => edgeDialog(node.id)));
+    m.form.append(
+      button("添加关系", () => {
+        m.dialog.close();
+        edgeDialog(node.id);
+      }),
+    );
+    m.show();
   }
   function createNode(parentId?: string) {
     const m = modal(parentId ? "新建子节点" : "新建顶级节点");
@@ -354,7 +475,7 @@ export async function renderWorkspace(
           kind: type.value,
           parentId: parent.value || undefined,
         });
-        selected = node.id;
+        if (!editor) selected = undefined;
         if (parent.value) collapsed.delete(parent.value);
         await reload();
         m.dialog.close();
@@ -475,8 +596,7 @@ export async function renderWorkspace(
       }),
       button("导出当前子图", () => exportGraph(cy?.nodes().map((n) => n.id()))),
     );
-    const inspector = e("div", undefined, "graph-inspector");
-    panel.append(controls, legend, canvas, buttons, inspector);
+    panel.append(controls, legend, buttons, canvas);
     function draw(data: GraphData) {
       cy?.destroy();
       cy = cytoscape({
@@ -539,9 +659,22 @@ export async function renderWorkspace(
       });
       cy.on("tap", "node", (event) => {
         selected = event.target.id();
-        renderInspector(inspector);
         void open(selected!).catch(notify);
       });
+      cy.on("cxttap", "node", (event) => {
+        const original = event.originalEvent as MouseEvent | undefined;
+        original?.preventDefault();
+        const box = canvas.getBoundingClientRect();
+        const pos = event.renderedPosition;
+        const node = graph.nodes.find((n) => n.id === event.target.id());
+        if (node)
+          nodeMenu(
+            node,
+            original?.clientX ?? box.left + pos.x,
+            original?.clientY ?? box.top + pos.y,
+          );
+      });
+      canvas.oncontextmenu = (event) => event.preventDefault();
       if (!data.nodes.length) status.textContent = "当前筛选下没有节点";
       else
         status.textContent = `${data.nodes.length} 个节点 · ${data.edges.length} 条关系`;
@@ -567,7 +700,6 @@ export async function renderWorkspace(
         (edge) => ids.has(edge.source) && ids.has(edge.target),
       ),
     });
-    renderInspector(inspector);
   }
   async function exportGraph(nodeIds?: string[]) {
     const result = await api(`/api/kbs/${kb.id}/export`, "POST", { nodeIds });
