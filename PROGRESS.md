@@ -116,4 +116,6 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## Git 与运行
 
+后台运行对齐：用户选择“只需最小化后不抢焦点，关闭窗口仍退出”，不引入托盘。检查 MCP→HTTP→工具层没有显示窗口或请求焦点的代码；前端 setFocus 仅在主动打开已存在文档时执行。当前会话直接 MCP 的 list_kbs/get_settings 均成功。Computer Use 窗口验证返回“coordinate input geometry is unavailable”，未能自动证明前台焦点是否保持，因此不宣称已复现或修复窗口置顶缺陷。MCP 初始化指南、完整手册和 README 加入后台操作约定：数据任务只走 MCP，不为检查结果激活窗口或截图。两个说明文件已同步到本机安装目录，新 MCP 子进程读取及真实只读查询通过；已有客户端在下次重启 MCP 时读取新说明，本次未重新生成安装包。后续具体跳窗时机仍待用户观察确认。
+
 main 已建仓。交互修订提交 f6c709e，后续保存状态修复与验收记录分别提交；历史 MVP 按后端、桌面界面、验收文档分组提交。功能提交：02384dd（图工具、导入、回收站、MCP）、797d23d（目录、Cytoscape、桌面 MVP）；无远端、未推送，不修改全局 Git 配置。开发运行 node scripts/dev.mjs 或 node scripts/desktop.mjs dev。标准 npm 命令见 README；本机 npm 可用 node .tools/package/bin/npm-cli.js 替代。原始设计 PNG 保留不改，大纲仅同步已确认决策。

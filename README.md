@@ -95,6 +95,8 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 **连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。0.1.2 起配置固定，只含启动路径和 `GRAPH_KB_CONNECTION_FILE`，不含临时令牌。应用重启后，已运行的 MCP 在下一次调用自动读取新会话，无需重新复制 JSON 或重启 MCP。应用关闭时可读取使用手册，业务操作需先打开应用。更换安装位置或数据目录后才需更新配置。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。
 
+**后台使用：** 将 Graph KB 最小化即可保留本地服务；直接说“通过 Graph KB MCP 在后台操作，不打开窗口或截图”。数据读写使用 MCP 工具并检查返回结果，不需要 Computer Use 界面验证。用户确认关闭应用仍退出，不采用托盘驻留。MCP 调用链本身不显示窗口或请求焦点；若窗口被唤起，应区分 API 调用与客户端的界面自动化行为。
+
 **接入本机 Codex：** 将上述完整 JSON 保存到已被 Git 忽略的 `.tools/mcp-connection.json`，在项目目录运行 `node scripts/connect-codex.mjs`。脚本先通过 MCP 初始化、发现工具和只读查询知识库，再用 `codex mcp add` 注册用户级 `graph-kb` 服务；不打印令牌或知识库内容。可追加 `--check` 只验证、不改 Codex 配置，也可传入其他 JSON 路径。Codex CLI 不在 PATH 时，用环境变量 `GRAPH_KB_CODEX_COMMAND` 指定其可执行文件绝对路径。此连接不需要 DeepSeek/GPT 等云端 API Key。
 
 首次注册或从旧配置迁移后，在 Codex 设置 → MCP servers 中刷新/Restart，并用 `/mcp` 检查连接；尚未加载的当前会话不能视为已接通。以后普通应用重启无需更新。数据目录下 `mcp-session.json` 由应用自动发布并轮换端口/令牌，Windows 文件 ACL 仅允许当前用户，正常关闭删除，异常退出残留在下次启动时替换；请勿公开或提交该私有文件。固定 JSON 不再把令牌写入 Codex 配置；旧版 URL/token 配置仍兼容，但仍会随应用重启失效。配置机制参考 [Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp)。
