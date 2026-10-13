@@ -38,7 +38,11 @@ fn main() {
             // Windows resource paths can use the extended \\?\ prefix. Node's
             // module resolver expects ordinary drive/UNC paths here.
             let root = dunce::simplified(&root).to_path_buf();
-            let data = dunce::simplified(&app.path().app_local_data_dir()?).to_path_buf();
+            let data_path = std::env::var_os("GRAPH_KB_DATA_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or(app.path().app_local_data_dir()?);
+            if !data_path.is_absolute() { return Err("GRAPH_KB_DATA_DIR 必须为绝对路径".into()); }
+            let data = dunce::simplified(&data_path).to_path_buf();
             let node = if cfg!(debug_assertions) {
                 std::path::PathBuf::from(std::env::var("GRAPH_KB_NODE").unwrap_or_else(|_| "node".into()))
             } else { root.join("node.exe") };

@@ -13,11 +13,11 @@ test('Milkdown 编辑→REST→Kùzu→Markdown 重读；独立窗口与内部�
   await mkdir('docs/evidence', { recursive: true });
   await page.screenshot({ path: 'docs/evidence/phase0-home.png' });
   await page.getByRole('button', { name: /Phase 0 验证/ }).click();
-  await page.getByRole('button', { name: '新建节点' }).click();
+  await page.getByRole('button', { name: '新建顶级节点' }).click();
   await page.getByLabel('文档标题').fill('知识图谱笔记');
   await page.getByRole('button', { name: '创建', exact: true }).click();
   const popup = page.waitForEvent('popup');
-  await page.getByRole('button', { name: /知识图谱笔记/ }).click();
+  await page.getByRole('button', { name: '知识图谱笔记', exact: true }).click();
   const document = await popup;
   await expect(document.locator('.ProseMirror')).toBeVisible();
   await document.locator('.ProseMirror').fill('中文知识图谱与 RAG 的研究笔记。');

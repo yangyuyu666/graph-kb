@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Graph KB",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "identifier": "local.graph-kb.phase0",
   "build": {
     "beforeDevCommand": "node scripts/dev.mjs",
@@ -10,8 +10,31 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "label": "main", "title": "知识图谱", "width": 1100, "height": 760, "minWidth": 680, "minHeight": 500 }],
-    "security": { "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'" }
+    "windows": [
+      {
+        "label": "main",
+        "title": "知识图谱",
+        "width": 1100,
+        "height": 760,
+        "minWidth": 680,
+        "minHeight": 500
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' data: blob: https:; media-src blob: https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'"
+    }
   },
-  "bundle": { "active": true, "targets": ["nsis"], "resources": ["resources/runtime/"], "icon": ["icons/icon.png", "icons/icon.ico"] }
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "resources": [
+      "resources/runtime/"
+    ],
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
+  }
 }

@@ -1,7 +1,11 @@
-import { api } from './api';
+import { api } from "./api";
 
 export interface CloudConfig {
-  enabled: boolean; provider: string; model: string; baseUrl: string; hasApiKey: boolean;
+  enabled: boolean;
+  provider: string;
+  model: string;
+  baseUrl: string;
+  hasApiKey: boolean;
   providers: { id: string; name: string; baseUrl: string }[];
 }
 
@@ -18,42 +22,109 @@ export async function renderSettings(container: HTMLElement) {
     <p class="hint">API Key 与开关仅在本次运行有效，重启后需要重新配置并开启。供应商、地址与模型保存在本地。</p>
     <div class="actions"><button id="clear-key" type="button">清除 API Key</button><button class="primary" type="submit">保存设置</button></div>
   </form>`;
-  const select = container.querySelector<HTMLSelectElement>('#provider')!;
-  const base = container.querySelector<HTMLInputElement>('#base-url')!;
-  const model = container.querySelector<HTMLInputElement>('#model')!;
-  const key = container.querySelector<HTMLInputElement>('#api-key')!;
-  const enabled = container.querySelector<HTMLInputElement>('#extraction-enabled')!;
-  const status = container.querySelector<HTMLElement>('#status')!;
-  let config = await api<CloudConfig>('/api/settings');
+  const select = container.querySelector<HTMLSelectElement>("#provider")!;
+  const base = container.querySelector<HTMLInputElement>("#base-url")!;
+  const model = container.querySelector<HTMLInputElement>("#model")!;
+  const key = container.querySelector<HTMLInputElement>("#api-key")!;
+  const enabled = container.querySelector<HTMLInputElement>(
+    "#extraction-enabled",
+  )!;
+  const status = container.querySelector<HTMLElement>("#status")!;
+  let config = await api<CloudConfig>("/api/settings");
   for (const provider of config.providers) {
-    const option = document.createElement('option'); option.value = provider.id; option.textContent = provider.name; select.append(option);
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = provider.name;
+    select.append(option);
   }
   function reflect() {
-    select.value = config.provider; base.value = config.baseUrl; model.value = config.model;
-    enabled.checked = config.enabled; key.value = '';
-    key.placeholder = config.hasApiKey ? '已配置，留空保留当前 Key' : '仅在本次运行中保留';
-    container.querySelector('#key-status')!.textContent = config.hasApiKey ? 'API Key 已配置' : '尚未配置 API Key';
+    select.value = config.provider;
+    base.value = config.baseUrl;
+    model.value = config.model;
+    enabled.checked = config.enabled;
+    key.value = "";
+    key.placeholder = config.hasApiKey
+      ? "已配置，留空保留当前 Key"
+      : "仅在本次运行中保留";
+    container.querySelector("#key-status")!.textContent = config.hasApiKey
+      ? "API Key 已配置"
+      : "尚未配置 API Key";
   }
   reflect();
   select.onchange = () => {
-    base.value = config.providers.find(p => p.id === select.value)?.baseUrl ?? '';
-    model.value = ''; key.value = ''; enabled.checked = false;
-    key.placeholder = '请输入所选服务的 API Key';
-    container.querySelector('#key-status')!.textContent = '更换供应商或地址后，必须重新输入 Key';
+    base.value =
+      config.providers.find((p) => p.id === select.value)?.baseUrl ?? "";
+    model.value = "";
+    key.value = "";
+    enabled.checked = false;
+    key.placeholder = "请输入所选服务的 API Key";
+    container.querySelector("#key-status")!.textContent =
+      "更换供应商或地址后，必须重新输入 Key";
   };
-  const form = container.querySelector<HTMLFormElement>('#cloud-form')!;
+  const form = container.querySelector<HTMLFormElement>("#cloud-form")!;
   async function save(clear = false) {
-    const buttons = [...form.querySelectorAll<HTMLButtonElement>('button')];
-    buttons.forEach(button => button.disabled = true);
+    const buttons = [...form.querySelectorAll<HTMLButtonElement>("button")];
+    buttons.forEach((button) => (button.disabled = true));
     try {
-      const payload: Record<string, unknown> = { provider: select.value, baseUrl: base.value.trim().replace(/\/+$/, ''), model: model.value.trim(), enabled: clear ? false : enabled.checked };
-      if (clear || key.value) payload.apiKey = clear ? '' : key.value.trim();
-      config = await api<CloudConfig>('/api/settings', 'PATCH', payload);
+      const payload: Record<string, unknown> = {
+        provider: select.value,
+        baseUrl: base.value.trim().replace(/\/+$/, ""),
+        model: model.value.trim(),
+        enabled: clear ? false : enabled.checked,
+      };
+      if (clear || key.value) payload.apiKey = clear ? "" : key.value.trim();
+      config = await api<CloudConfig>("/api/settings", "PATCH", payload);
       reflect();
-      status.textContent = clear ? 'API Key 已清除，自动建图已关闭' : '设置已保存';
-    } catch (error) { status.textContent = error instanceof Error ? error.message : '保存设置失败'; }
-    finally { buttons.forEach(button => button.disabled = false); }
+      status.textContent = clear
+        ? "API Key 已清除，自动建图已关闭"
+        : "设置已保存";
+    } catch (error) {
+      status.textContent =
+        error instanceof Error ? error.message : "保存设置失败";
+    } finally {
+      buttons.forEach((button) => (button.disabled = false));
+    }
   }
-  form.onsubmit = event => { event.preventDefault(); void save(); };
-  container.querySelector<HTMLButtonElement>('#clear-key')!.onclick = () => void save(true);
+  form.onsubmit = (event) => {
+    event.preventDefault();
+    void save();
+  };
+  container.querySelector<HTMLButtonElement>("#clear-key")!.onclick = () =>
+    void save(true);
+  const section = document.createElement("section");
+  section.className = "api-settings";
+  section.innerHTML =
+    '<h2>开放 API / MCP</h2><p class="hint">外部 AI 与界面使用相同的校验规则。保持应用打开；重启后会话端口和密钥会变化，需要重新复制配置。</p><button type="button">显示本地连接配置</button><textarea aria-label="MCP 连接配置" readonly hidden></textarea>';
+  section.querySelector("button")!.onclick = async () => {
+    try {
+      const connection = await api<{
+        url: string;
+        token: string;
+        command: string;
+        args: string[];
+      }>("/api/connection");
+      const output = section.querySelector("textarea")!;
+      output.hidden = false;
+      output.value = JSON.stringify(
+        {
+          mcpServers: {
+            "graph-kb": {
+              command: connection.command,
+              args: connection.args,
+              env: {
+                GRAPH_KB_API_URL: connection.url,
+                GRAPH_KB_API_TOKEN: connection.token,
+              },
+            },
+          },
+        },
+        null,
+        2,
+      );
+      section.querySelector("button")!.textContent = "重新获取连接配置";
+    } catch (error) {
+      status.textContent = String(error);
+    }
+  };
+  container.append(section);
 }

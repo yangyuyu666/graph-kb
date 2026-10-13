@@ -28,12 +28,16 @@ try {
     if (!r.ok) throw Error(await r.text()); return r.json();
   }`);
   const tag = `桌面验证 ${Date.now()}`;
-  await main.evaluate(`document.querySelector('#new-kb').click(); document.querySelector('dialog input').value = ${JSON.stringify(tag)}; document.querySelector('dialog form').requestSubmit()`);
+  await main.evaluate(`document.querySelector('#new-kb').click()`);
+  await until(() => main.evaluate('!!document.querySelector("dialog input")'));
+  await main.evaluate(`document.querySelector('dialog input').value = ${JSON.stringify(tag)}; document.querySelector('dialog form').requestSubmit()`);
   await until(() => main.evaluate(`Array.from(document.querySelectorAll('.card')).some(e => e.textContent.includes(${JSON.stringify(tag)}))`));
   await until(() => main.evaluate('!document.querySelector("dialog")'));
   await main.evaluate(`Array.from(document.querySelectorAll('.card')).find(e => e.textContent.includes(${JSON.stringify(tag)})).click()`);
   await until(() => main.evaluate('!!document.querySelector("#new-node")'));
-  await main.evaluate(`document.querySelector('#new-node').click(); document.querySelector('dialog input').value = '原生 Markdown 笔记'; document.querySelector('dialog form').requestSubmit()`);
+  await main.evaluate(`document.querySelector('#new-node').click()`);
+  await until(() => main.evaluate('!!document.querySelector("dialog input")'));
+  await main.evaluate(`document.querySelector('dialog input').value = '原生 Markdown 笔记'; document.querySelector('dialog form').requestSubmit()`);
   await until(() => main.evaluate('!!document.querySelector(".node")'));
   await until(() => main.evaluate('!document.querySelector("dialog")'));
   await main.evaluate(`document.querySelector('.node').click()`);
@@ -48,6 +52,23 @@ try {
   await until(() => doc.evaluate('document.querySelector("#status").textContent.includes("已保存到本地")'));
   const saved = await main.evaluate(`qaRequest('/api/nodes/${id}')`);
   assert.match(saved.markdown, /中文知识图谱/); assert.equal(saved.revision, 1);
+  // Exercise the shipped tree UI and Cytoscape under Tauri's production CSP.
+  await main.evaluate(`document.querySelector('.tree-add').click()`);
+  await until(() => main.evaluate('!!document.querySelector("dialog input")'));
+  await main.evaluate(`document.querySelector('dialog input').value = '原生子节点'; document.querySelector('dialog form').requestSubmit()`);
+  await until(() => main.evaluate('!document.querySelector("dialog") && !!document.querySelector(".tree-children .node")'));
+  const graph = await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`);
+  assert.ok(graph.edges.some(e => e.type === 'CHILD_OF' && e.target === id));
+  await main.evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find(e => e.textContent === '图谱').click()`);
+  await until(() => main.evaluate('!!document.querySelector("#graph-canvas canvas")'));
+  assert.equal(await main.evaluate(`document.querySelector('#graph-canvas canvas').width > 0`), true);
+  const graphShot = await main.send('Page.captureScreenshot', { format: 'png' });
+  await writeFile('docs/evidence/tauri-graph.png', Buffer.from(graphShot.data, 'base64'));
+  const child = graph.nodes.find(n => n.id !== id);
+  const deleted = await main.evaluate(`qaRequest('/api/nodes/${child.id}', 'DELETE')`);
+  assert.equal((await main.evaluate(`qaRequest('/api/trash')`)).length, 1);
+  await main.evaluate(`qaRequest('/api/trash/${deleted.id}/restore', 'POST', {})`);
+  assert.equal((await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`)).nodes.length, 2);
   const linked = await main.evaluate(`qaRequest('/api/nodes', 'POST', { kbId: ${JSON.stringify(saved.kbId)}, title: '原生关联文档' })`);
   const markdown = `# 原生 Markdown 验证\n\n中文 **知识图谱**。\n\n[原生关联文档](node:${linked.id})\n`;
   await main.evaluate(`qaRequest('/api/nodes/${id}', 'PATCH', ${JSON.stringify({ revision: 1, markdown })})`);
@@ -68,5 +89,5 @@ try {
   await main.evaluate(`window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'doc-${id}'})`);
   await until(async () => (await targets()).length === 1);
   await main.evaluate(`setTimeout(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'main'}), 100)`);
-  console.log('PASS: Tauri IPC, create KB/page, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close');
+  console.log('PASS: Tauri IPC, parent/child tree creation, Cytoscape canvas, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close');
 } finally { for (const connection of connections) connection.close(); }
