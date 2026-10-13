@@ -1,0 +1,43 @@
+[
+  {
+    "name": "remark-math-6.0.0",
+    "file": "license",
+    "url": "https://raw.githubusercontent.com/remarkjs/remark-math/d5d0660b150810a535bbb07eac6cc96a4510aa24/license"
+  },
+  {
+    "name": "alloc-stdlib-0.3.0",
+    "file": "LICENSE",
+    "url": "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE"
+  },
+  {
+    "name": "defmt-parser-1.0.0",
+    "file": "LICENSE-MIT",
+    "url": "https://raw.githubusercontent.com/knurling-rs/defmt/4a8cdb44891ed57b8ff5a023b6bec7137c48708f/LICENSE-MIT"
+  },
+  {
+    "name": "defmt-parser-1.0.0",
+    "file": "LICENSE-APACHE",
+    "url": "https://raw.githubusercontent.com/knurling-rs/defmt/4a8cdb44891ed57b8ff5a023b6bec7137c48708f/LICENSE-APACHE"
+  },
+  {
+    "name": "webview2-com-0.39.1",
+    "file": "LICENSE",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE"
+  },
+  {
+    "name": "webview2-com-macros-0.8.1",
+    "file": "LICENSE",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/dffa41a8a46d3f5565eefbff2de57d38d399f158/LICENSE"
+  },
+  {
+    "name": "webview2-com-sys-0.39.1",
+    "file": "LICENSE",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE"
+  },
+  {
+    "name": "selectors-0.38.0",
+    "file": "LICENSE",
+    "source": "MPL-2.0 standard text copied from cssparser 0.37.0 LICENSE; selectors source headers specify https://mozilla.org/MPL/2.0/",
+    "url": "https://mozilla.org/MPL/2.0/"
+  }
+]

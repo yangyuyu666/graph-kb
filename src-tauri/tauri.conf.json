@@ -6,12 +6,12 @@
   "build": {
     "beforeDevCommand": "node scripts/dev.mjs",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "node scripts/build-desktop.mjs",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [{ "label": "main", "title": "知识图谱", "width": 1100, "height": 760, "minWidth": 680, "minHeight": 500 }],
     "security": { "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'" }
   },
-  "bundle": { "active": false, "icon": ["icons/icon.png", "icons/icon.ico"] }
+  "bundle": { "active": true, "targets": ["nsis"], "resources": ["resources/runtime/"], "icon": ["icons/icon.png", "icons/icon.ico"] }
 }

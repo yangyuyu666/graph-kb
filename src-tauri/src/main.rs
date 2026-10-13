@@ -32,17 +32,19 @@ fn api_connection(service: tauri::State<'_, LocalService>) -> ApiConnection {
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            // Phase 0 development sidecar. Shipping a self-contained Node runtime is
-            // deliberately gated until native SDK + packaging checks are available.
-            if !cfg!(debug_assertions) {
-                return Err("Phase 0 尚未完成 sidecar 分发验证，请使用 tauri dev".into());
-            }
-            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-            let data = app.path().app_local_data_dir()?;
-            let node = std::env::var("GRAPH_KB_NODE").unwrap_or_else(|_| "node".into());
+            let root = if cfg!(debug_assertions) {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()
+            } else { app.path().resource_dir()?.join("resources/runtime") };
+            // Windows resource paths can use the extended \\?\ prefix. Node's
+            // module resolver expects ordinary drive/UNC paths here.
+            let root = dunce::simplified(&root).to_path_buf();
+            let data = dunce::simplified(&app.path().app_local_data_dir()?).to_path_buf();
+            let node = if cfg!(debug_assertions) {
+                std::path::PathBuf::from(std::env::var("GRAPH_KB_NODE").unwrap_or_else(|_| "node".into()))
+            } else { root.join("node.exe") };
             let mut command = Command::new(node);
             command.arg(root.join("server/desktop.mjs")).arg(data)
-                .current_dir(root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit());
+                .current_dir(&root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit());
             #[cfg(windows)] {
                 use std::os::windows::process::CommandExt;
                 command.creation_flags(0x08000000); // CREATE_NO_WINDOW

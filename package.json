@@ -9,8 +9,12 @@
     "build": "tsc --noEmit && vite build",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "test:ui": "playwright test",
+    "test:runtime": "node --test tests/runtime/standalone.test.mjs",
+    "test:desktop": "node scripts/verify-desktop.mjs",
     "tauri": "tauri",
-    "desktop": "tauri dev",
+    "desktop": "node scripts/desktop.mjs dev",
+    "desktop:build": "node scripts/desktop.mjs build",
+    "runtime:prepare": "node scripts/prepare-runtime.mjs",
     "check:licenses": "node scripts/check-licenses.mjs"
   },
   "dependencies": {

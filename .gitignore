@@ -3,6 +3,8 @@ dist/
 .tools/
 .graph-kb/
 src-tauri/target/
+src-tauri/resources/runtime/
+src-tauri/gen/
 test-results/
 playwright-report/
 *.log
