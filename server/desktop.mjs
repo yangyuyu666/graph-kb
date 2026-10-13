@@ -1,16 +1,15 @@
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
-import { GraphStore } from "./graph-store.mjs";
-import { KnowledgeTools } from "./tools.mjs";
+import { LibraryStore } from "./library-store.mjs";
 import { startApi } from "./http.mjs";
 import { CloudSettings } from "./cloud-settings.mjs";
 
 const dataDir = process.argv[2];
 if (!dataDir) throw new Error("Tauri must provide an app data directory");
-const store = await new GraphStore(resolve(dataDir)).open();
+const cloudSettings = await new CloudSettings(resolve(dataDir)).open();
+const store = await new LibraryStore(resolve(dataDir), { cloudSettings }).open();
 const token = randomBytes(32).toString("hex");
-const cloudSettings = await new CloudSettings(store.root).open();
-const tools = new KnowledgeTools(store, { cloudSettings });
+const tools = store;
 await store.run(() => tools.expireTrash());
 const api = await startApi(tools, token);
 const purgeTimer = setInterval(

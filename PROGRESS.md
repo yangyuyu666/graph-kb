@@ -1,6 +1,19 @@
 # 开发进度
 
-更新：2026-10-13。项目版本：0.1.3。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-13。项目版本：0.2.0。工作目录：C:/Users/27783/graph-kb。
+
+## 独立知识库存储与整库迁移（0.2.0）
+
+- 每库使用 `libraries/<知识库UUID>/graph.kuzu`，正文、附件、回收站、文件日志也位于该目录，库之间不共用图库。`library.json` 标记库身份，根目录 `catalog.json` 是可重建的位置清单；应用级云配置与 MCP 会话文件仍在原根目录。同一工作区有进程锁，图库连接按需切换。
+- 跨库引用使用 `node:<库UUID>/<节点UUID>`；兼容旧裸节点 UUID。引用对话框可选目标库，复制节点链接使用带库 ID 的形式。未加载目标库显示保留的链接及“目标知识库未加载”，导入目标库后恢复。全局搜索、反向链接汇总已加载库；图边仍不能跨库。
+- 首页新增“导入知识库”，卡片菜单新增“导出知识库”。`.graphkb.json` 是版本化的整库包，包含图、正文、边标签、附件、回收站和抽取缓存；不含密钥或本地连接配置。“迁移 / 恢复”保留所有 ID，冲突拒绝覆盖；“作为副本”重建 ID、重写内部链接，外部引用不变，丢弃可重建缓存。原来的库内文档导入导出仍保留。
+- REST 增加 POST `/api/databases/{id}/export` 与 `/api/databases/import`；MCP 增加 export_database、import_database，共 34 项工具；手册同步说明存储和链接规则。固定 MCP JSON 不变，客户端重新加载工具目录即可发现新功能。
+- 旧库迁移先在临时目录完整构建所有库，成功后一次性重命名发布；失败保留原共享库，可修复后重试。原根目录 `graph.kuzu`、documents、blobs、trash 等继续保留为迁移前备份，之后新数据只写 libraries；不自动删除备份。
+- **实际数据已迁移**：原工作区 3 个库分别成为独立目录，1 个可见、2 个在回收站。已逐项比较迁移前后节点 ID/属性、边及标签、正文（仅补全可解析引用的库 ID）、附件字节、未过期回收站和缓存，均一致；未写入用户测试文档。验收后应用保持关闭。
+- 验证：后端全套 47 项、浏览器全套 13 项、独立运行时 1 项通过；新增旧库拆分、迁移失败重试、工作区互斥、索引重建、物理图库隔离、备份冲突/副本、跨库链接恢复测试。文件提交后提升失败时先重开图库恢复日志，再允许整库导出，避免图和正文不一致。安装版空 PATH、隔离数据的 Tauri 验收通过，包含整库导出/副本导入。安装器退出 0，安装文件逐项与源码/构建产物核对。
+- 本版整库文件限制 24 MiB；更大库需关闭应用后复制完整单库目录。未进行跨平台或大库性能验收。全局检索逐库查询，图库按需切换会增加延迟；规模优化仍按开放问题处理。
+
+实际目录：`C:/Users/27783/AppData/Local/local.graph-kb.phase0/libraries/<知识库UUID>/`。界面截图：[整库导入与副本](docs/evidence/database-transfer.png)。
 
 ## 边文字标签（0.1.3）
 
@@ -18,7 +31,7 @@
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.1.3** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据目录标识保持不变，不迁走用户数据。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际安装版验收后已关闭测试窗口，用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
+已生成并实际安装 Windows x64 **0.2.0** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -51,6 +64,8 @@ Tag、File、Person、Task 支持创建、编辑及图关系，共享文档能�
 | src/main.ts、src/document-extras.ts | Milkdown、独立窗口、稳定引用、附件、媒体、相关文档 |
 | src/api.ts、src/settings.ts、src/ui.ts、src/style.css | 共用 REST、云配置、对话框、样式 |
 | server/graph-store.mjs | 嵌入 Kùzu、磁盘文档、文件提交日志与故障恢复 |
+| server/library-store.mjs | 每库独立存储、工作区互斥、位置索引、旧库拆分与跨库路由 |
+| server/database-package.mjs、server/node-links.mjs | 整库快照/校验/副本、稳定跨库引用解析 |
 | server/tools.mjs、server/operations.mjs | 唯一工具边界、约束、抽取/缓存、CRUD、查询、迁移、回收站 |
 | server/http.mjs、server/mcp.mjs | 鉴权 loopback REST、stdio MCP |
 | server/cloud-settings.mjs、cloud-extractor.mjs | 多供应商适配、Key 内存保存、结构校验 |
@@ -67,11 +82,11 @@ Windows x64；Node 24.19.0、Kùzu 0.11.3、Milkdown 7.22.3、Cytoscape.js 3.34.
 
 | 检查 | 结果 |
 |---|---|
-| 后端测试 | 40 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、导入导出、附件、缓存/合并、MCP 手册和操作流程、跨应用重启自动重连、Windows 会话文件 ACL、边标签及旧库迁移 |
-| Edge 界面测试 | 全套 11 项通过，包含右键边文字编辑、保存后显示、刷新保留及清空；其余编辑、目录、节点菜单、设置和导入导出回归通过 |
+| 后端测试 | 47 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、导入导出、附件、缓存/合并、MCP 手册和操作流程、跨应用重启自动重连、Windows 会话文件 ACL、边标签及旧库迁移 |
+| Edge 界面测试 | 全套 13 项通过（含整库导入导出、跨库引用与未加载恢复），包含右键边文字编辑、保存后显示、刷新保留及清空；其余编辑、目录、节点菜单、设置和导入导出回归通过 |
 | 独立运行时 | 1 项通过，复制出仓库、空 PATH、实际保存和重启回读 |
 | TypeScript / Vite | 构建通过；主 bundle 约 1.97 MB、gzip 624 KB，存在体积提示 |
-| Tauri release / NSIS | 0.1.3 构建成功，安装退出 0；实际安装版独立数据验收通过，包含边文字编辑和删除恢复 |
+| Tauri release / NSIS | 0.2.0 构建成功，安装退出 0；实际安装版独立数据验收通过，包含边文字编辑和删除恢复 |
 | 已安装原生应用 | 空 PATH、临时工作目录、隔离数据；真实 IPC、目录右侧编辑保存、右键创建子节点、Cytoscape 画布、删除恢复、中文保存、新窗口链接、设置默认关闭、关闭退出通过 |
 | npm 许可元数据 | 368 个锁条目，无 GPL/AGPL/LGPL/未知项；随包收集 294 项非 dev npm 许可及 242 项 Windows Rust 许可 |
 | npm audit --omit=dev | 0 vulnerabilities |
@@ -90,7 +105,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.1.3_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.3_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.2.0_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.0_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 
@@ -98,7 +113,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 | 阻塞 / 未验项 | 影响与处理 |
 |---|---|
-| 当前客户端需重新加载更新后的 MCP 工具定义 | 固定 GRAPH_KB_CONNECTION_FILE 配置不变；重新加载 MCP 后可发现 label 参数及 update_edge 的局部更新。普通应用重启仍自动恢复连接，无需再复制 JSON |
+| 当前客户端需重新加载更新后的 MCP 工具定义 | 固定 GRAPH_KB_CONNECTION_FILE 配置不变；重新加载 MCP 后可发现整库导入导出工具和跨库引用说明。普通应用重启仍自动恢复连接，无需再复制 JSON |
 | 无用户选定的真实模型/API Key | DeepSeek、GPT、Gemini、MiMo 协议已模拟验证，但真实抽取质量、费用、速度未验。在应用设置填写即可；不用在聊天发 Key |
 | 无签名证书、商店账户与干净 Windows VM | 无法完成商店分发和跨机器发行验收；不阻塞本机 MVP |
 | 无已确认的规模/性能指标 | 全文为本地扫描、顶级平行边为两两建边，只有功能规模测试；大图、大批附件、断电、跨平台未验收 |

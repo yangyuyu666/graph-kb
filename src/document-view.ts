@@ -69,15 +69,17 @@ export async function mountDocument(
   el("#title").textContent = node.title;
   let revision = node.revision;
   const deletedIds = new Set<string>();
+  const unavailableIds = new Set<string>();
   const linkState = new PluginKey("deleted-node-links");
   async function checkLinks(markdown: string) {
     const ids = [
       ...new Set(
-        [...markdown.matchAll(/node:([0-9a-f-]{36})/gi)].map((m) => m[1]),
+        [...markdown.matchAll(/node:([0-9a-f-]{36}(?:\/[0-9a-f-]{36})?)/gi)].map((m) => m[1]),
       ),
     ].slice(0, 1000);
     if (!ids.length) {
       deletedIds.clear();
+      unavailableIds.clear();
       return;
     }
     const result = await api<{ id: string; state: string }[]>(
@@ -86,8 +88,12 @@ export async function mountDocument(
       { name: "resolve_links", arguments: { ids } },
     );
     deletedIds.clear();
+    unavailableIds.clear();
     for (const link of result)
-      if (link.state !== "active") deletedIds.add(link.id);
+      if (link.state !== "active") {
+        deletedIds.add(link.id);
+        if (link.state === "unavailable") unavailableIds.add(link.id);
+      }
   }
   await checkLinks(node.markdown);
   checkMounted();
@@ -111,7 +117,7 @@ export async function mountDocument(
           // Extend only UUID node links; retain Milkdown's sanitizer for every other URL.
           if (
             typeof href === "string" &&
-            (/^(node|asset):[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            (/^(?:node:(?:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?|asset:)[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
               href,
             ) ||
               /^embed:https:\/\//.test(href))
@@ -141,8 +147,8 @@ export async function mountDocument(
                     )
                       decorations.push(
                         Decoration.inline(pos, pos + n.nodeSize, {
-                          class: "deleted-reference",
-                          "aria-label": "已删除节点",
+                          class: unavailableIds.has(href.slice(5)) ? "deleted-reference unavailable-reference" : "deleted-reference",
+                          "aria-label": unavailableIds.has(href.slice(5)) ? "目标知识库未加载" : "已删除节点",
                         }),
                       );
                   }
@@ -255,7 +261,7 @@ export async function mountDocument(
       event.stopPropagation();
       if (href.startsWith("node:")) {
         if (deletedIds.has(href.slice(5))) {
-          el("#status").textContent = "已删除节点，可在回收站恢复";
+          el("#status").textContent = unavailableIds.has(href.slice(5)) ? "目标知识库未加载，请导入目标知识库后重试" : "已删除节点，可在回收站恢复";
           return;
         }
         void openDocument(href.slice(5)).catch(message);

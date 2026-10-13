@@ -61,7 +61,8 @@ fn main() {
                 let result = BufReader::new(stdout).read_line(&mut line).map(|_| line);
                 let _ = sender.send(result);
             });
-            let connection = receiver.recv_timeout(std::time::Duration::from_secs(20))
+            // First launch may migrate a legacy shared graph into separate libraries.
+            let connection = receiver.recv_timeout(std::time::Duration::from_secs(120))
                 .map_err(|error| error.to_string())
                 .and_then(|line| line.map_err(|error| error.to_string()))
                 .and_then(|line| serde_json::from_str::<ApiConnection>(&line).map_err(|error| error.to_string()));

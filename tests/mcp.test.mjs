@@ -7,13 +7,12 @@ import { createInterface } from "node:readline";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { GraphStore } from "../server/graph-store.mjs";
-import { KnowledgeTools } from "../server/tools.mjs";
+import { LibraryStore } from "../server/library-store.mjs";
 import { startApi } from "../server/http.mjs";
 test("MCP stdio 外部进程：初始化、工具发现、实际 CRUD、规则错误与回收站", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "graph-kb-mcp-"));
-  const store = await new GraphStore(root).open();
-  const tools = new KnowledgeTools(store),
+  const store = await new LibraryStore(root).open();
+  const tools = store,
     api = await startApi(tools, "mcp-test-token");
   const child = spawn(process.execPath, ["server/mcp.mjs"], {
     windowsHide: true,
@@ -143,6 +142,16 @@ test("MCP stdio 外部进程：初始化、工具发现、实际 CRUD、规则�
     const restored = (await tool("restore", { id: batch.id })).data;
     assert.equal(restored.restored, 1);
     assert.deepEqual(restored.skippedEdges, []);
+  });
+  await t.test("MCP 整库导出和副本导入使用独立图库，迁移模式拒绝冲突", async () => {
+    assert.ok(catalog.some(t => t.name === "export_database"));
+    assert.ok(catalog.some(t => t.name === "import_database"));
+    const backup = (await tool("export_database", { kbId: kb.id })).data;
+    assert.equal(backup.format, "graph-kb-database");
+    assert.equal((await tool("import_database", { data: backup })).data.error.code, "DATABASE_EXISTS");
+    const copy = (await tool("import_database", { data: backup, mode: "copy" })).data;
+    assert.notEqual(copy.id, kb.id);
+    assert.equal((await tool("get_graph", { kbId: copy.id })).data.nodes.length, backup.nodes.length);
   });
   await t.test("Codex 接入检查只读验证真实服务，拒绝失效令牌且不泄露凭据", async () => {
     const file = join(root, "connection.json");

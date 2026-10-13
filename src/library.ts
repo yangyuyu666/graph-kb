@@ -1,7 +1,7 @@
 import { api, type KnowledgeBase, type PageNode } from "./api";
 import { renderSettings } from "./settings";
 import { renderWorkspace } from "./workspace";
-import { element as e, button, nameDialog, confirmTrash, report } from "./ui";
+import { element as e, button, nameDialog, confirmTrash, report, modal, field, download } from "./ui";
 
 export async function renderLibrary(
   app: HTMLElement,
@@ -63,7 +63,9 @@ export async function renderLibrary(
       "primary",
     );
     create.id = "new-kb";
-    header.append(heading, create);
+    const actions = e("div", undefined, "actions");
+    actions.append(button("导入知识库", () => importDatabase()), create);
+    header.append(heading, actions);
     const filter = e("input");
     filter.type = "search";
     filter.placeholder = "搜索知识库";
@@ -99,6 +101,10 @@ export async function renderLibrary(
         summary.setAttribute("aria-label", `管理知识库 ${kb.name}`);
         menu.append(
           summary,
+          button("导出知识库", async () => {
+            const data = await api(`/api/databases/${kb.id}/export`, "POST", {});
+            download(`${kb.name}.graphkb.json`, JSON.stringify(data), "application/json");
+          }),
           button("重命名", () =>
             nameDialog(
               "重命名知识库",
@@ -138,6 +144,27 @@ export async function renderLibrary(
     }
     filter.oninput = draw;
     draw();
+  }
+  function importDatabase() {
+    const m = modal("导入知识库");
+    const file = e("input"); file.type = "file"; file.accept = ".json,.graphkb.json"; file.required = true;
+    field(m.form, "整库备份文件", file);
+    const mode = e("select");
+    mode.append(new Option("迁移 / 恢复（保留 ID）", "restore"), new Option("作为副本（生成新 ID）", "copy"));
+    field(m.form, "导入方式", mode);
+    m.form.append(e("p", "选择导出的 .graphkb.json，最大 24 MiB。包含正文、附件和回收站；同 ID 知识库不会被覆盖。外部引用的目标库需另行导入。", "hint"));
+    m.submit.textContent = "导入";
+    m.form.onsubmit = async event => {
+      event.preventDefault(); m.submit.disabled = true;
+      try {
+        const selected = file.files?.[0];
+        if (!selected || selected.size > 24 * 1024 * 1024) throw Error("请选择不超过 24 MiB 的整库备份文件");
+        const data = JSON.parse(await selected.text());
+        await api("/api/databases/import", "POST", { data, mode: mode.value });
+        await library(); m.dialog.close();
+      } catch (error) { m.error.textContent = String(error); m.submit.disabled = false; }
+    };
+    m.show();
   }
   async function searchPage() {
     if (!main.dispatchEvent(new Event("workspace-leave", { cancelable: true })))

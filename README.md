@@ -1,6 +1,6 @@
 # graph-kb
 
-基于知识图谱的本地知识管理应用，当前为 **0.1.2 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
+基于知识图谱的本地知识管理应用，当前为 **0.2.0 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
 
 ## 开发运行
 
@@ -54,16 +54,17 @@ Key 只保存在本次进程内存，不回传页面、不写配置文件/日志
 ## 存储与写入边界
 
 ```text
-Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
-                               └→ documents/<节点 UUID>.md（正文）
+Milkdown → REST / MCP → LibraryStore（知识库定位与跨库查询）
+                        └→ 每库 KnowledgeTools → 独立 Kùzu + Markdown + 附件
 ```
 
 - 浏览器开发数据在 `.graph-kb/dev/`，可设置 `GRAPH_KB_DATA_DIR`。Tauri 数据默认在 `app_local_data_dir()`，两者隔离；桌面也支持绝对路径 `GRAPH_KB_DATA_DIR`，原生测试用它隔离测试数据。
-- `graph.kuzu` 是图库；`documents/` 中 Page 和 Concept 各有 1:1 Markdown；`journal/` 是跨图库/文件提交恢复日志；`trash/<批次>/` 是回收站正文，`blobs/` 保存附件；全部应一起备份。
+- 0.2.0 起，每库位于 `libraries/<知识库 UUID>/`，各自包含 `graph.kuzu`、`documents/`、`journal/`、`trash/`、`blobs/` 和 `library.json`，不共用图数据库。根目录 `catalog.json` 仅记录库的位置，启动会从目录清单重建；`cloud-settings.json` 与 `mcp-session.json` 仍属应用级配置。
+- 首次启动自动将旧共享图库拆分，保留 ID、正文、边标签、附件、抽取缓存和回收站，旧的裸 UUID 引用在可确定目标库时补全库 ID。全部库构建完成后才一次性发布 `libraries/`；失败不发布半份结果，修复问题后可重试。根目录旧 `graph.kuzu`、`documents/` 等保留为迁移前备份，不再参与新版本读写。
 - `KnowledgeBase`、`FileCommit` 是容器/提交元数据表，不作为用户图谱节点，不生成虚拟根。
-- UI、REST 和 MCP 共用 `KnowledgeTools.execute()`；MCP 是 stdio 适配器，不另外持有数据库。
+- UI、REST 和 MCP 共用独立库路由与 `KnowledgeTools.execute()`；MCP 是 stdio 适配器，不另外持有数据库。同一工作区只能由一个服务实例打开；按需切换图库连接，避免每库常驻一份 Kùzu 缓存。
 - 从属子→父、禁止自环/跨库/环；同库可见顶级节点自动建立平行边，排序后只存一条；成为子节点时清理平行边。
-- `node:<UUID>` 只存正文，不创建引用边。Concept 不出现在页面列表。
+- 新引用使用 `node:<知识库UUID>/<节点UUID>`，旧 `node:<节点UUID>` 仍兼容；引用只存正文，不创建跨库图边。目标库未加载时保留链接并提示，导入目标库后刷新/聚焦文档即可恢复。引用节点对话框可以选择其他库；全局搜索及反向链接汇总已加载各库。Concept 不出现在页面列表。
 - 保存携带 `revision`，冲突返回 409，界面保留草稿。抽取管线只新增/复用；旧概念清理策略待定。
 
 ## REST 与 MCP
@@ -76,6 +77,8 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 | GET / PATCH / DELETE | /api/kbs/{id} | 读取 / 重命名 / 软删除 |
 | GET | /api/kbs/{id}/nodes、/graph | 可见节点、筛选图谱 |
 | POST | /api/kbs/{id}/import、/export | 导入 / 导出 |
+| POST | /api/databases/{id}/export | 整库备份，保留 ID、附件和回收站 |
+| POST | /api/databases/import | body 为 {data, mode}，迁移恢复或作为副本 |
 | POST | /api/nodes | 创建，支持 parentId 和 kind |
 | GET / PATCH / DELETE | /api/nodes/{id} | 读取 / 保存正文或重命名 / 软删除 |
 | POST | /api/edges | 创建并校验关系 |
@@ -112,5 +115,14 @@ REST 创建边可带 `label`；`PATCH /api/edges/{编码后的关系ID}` 仅传 
 回收站保留 30 天，运行时每小时清理，启动和请求维护也检查。恢复尽量恢复原边，因其他节点删除或结构变化产生的冲突边会跳过并提示。图谱/目录隐藏 Concept；后台纠正及合并可经 MCP 完成。候选池功能不在本版，逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)。
 
 主仓库采用 [Apache-2.0](LICENSE)；第三方组件保留各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 整库迁移、导入与导出（0.2.0）
+
+- 首页知识库卡片的 `⋯ → 导出知识库` 生成 `.graphkb.json`；首页“导入知识库”可导入该文件。库内原来的 Markdown/CSV/JSON 导入仍用于向当前库合并文档。
+- “迁移 / 恢复”保留库与对象 ID；已有同 ID 库或对象时拒绝覆盖。“作为副本”生成新的库、节点、附件、回收站 ID，并改写副本内部引用；对其他库的引用保持原指向。
+- 整库备份是版本化的可移植数据包，不是直接上传 Kùzu 二进制：包含图结构、正文、边属性、附件、回收站与抽取缓存，导入时重建独立 Kùzu；不包含云端 Key 或本机 MCP 配置。副本因 ID/正文变化会丢弃可重建的抽取缓存。
+- 当前整库文件限 24 MiB。更大的库可关闭应用后复制整个 `libraries/<UUID>/` 文件夹到另一工作区的 `libraries/` 中，保留文件夹名与 `library.json`，重启发现；不要覆盖已有同 ID 文件夹，不要在应用运行时复制打开的图库。
+- 迁移来源库不会自动带走它引用的其他库，需分别迁移目标库。跨机器尚未加载的目标会提示“目标知识库未加载”。同一副本的新 ID 不会让其他库已有链接自动改指向副本。
+- 旧根目录备份仅反映迁移前状态，新写入在 `libraries/`；不要直接用旧版打开新工作区。常规备份优先使用整库导出，或关闭应用后复制完整工作区。
 
 协议依据：[OpenAI Responses 结构化输出](https://developers.openai.com/api/docs/guides/structured-outputs)、[DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode/)、[Gemini 结构化输出](https://ai.google.dev/gemini-api/docs/generate-content/structured-output)、[MiMo Chat API](https://mimo.mi.com/docs/en-US/api/chat/openai-api)。接口适配通过本地协议测试，不等于供应商实测；模型需支持对应接口和 JSON 输出。

@@ -121,11 +121,17 @@ export async function startApi(tools, token, port = 0) {
       const kb = path.match(/^\/api\/kbs\/([^/]+)$/);
       const graph = path.match(/^\/api\/kbs\/([^/]+)\/graph$/);
       const transfers = path.match(/^\/api\/kbs\/([^/]+)\/(import|export)$/);
+      const databaseExport = path.match(/^\/api\/databases\/([^/]+)\/export$/);
       const links = path.match(/^\/api\/nodes\/([^/]+)\/(backlinks|related)$/);
       const asset = path.match(/^\/api\/assets\/([^/]+)$/);
       const edge = path.match(/^\/api\/edges\/([^/]+)$/);
       const restore = path.match(/^\/api\/trash\/([^/]+)\/restore$/);
-      if (path === "/api/settings" && req.method === "GET")
+      if (path === "/api/databases/import" && req.method === "POST")
+        operation = "import_database";
+      else if (databaseExport && req.method === "POST") {
+        operation = "export_database";
+        input = { kbId: databaseExport[1] };
+      } else if (path === "/api/settings" && req.method === "GET")
         operation = "get_settings";
       else if (path === "/api/settings" && req.method === "PATCH")
         operation = "update_settings";

@@ -1,17 +1,15 @@
 import { createServer } from "vite";
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
-import { GraphStore } from "../server/graph-store.mjs";
-import { KnowledgeTools } from "../server/tools.mjs";
+import { LibraryStore } from "../server/library-store.mjs";
 import { startApi } from "../server/http.mjs";
 import { CloudSettings } from "../server/cloud-settings.mjs";
 
-const store = await new GraphStore(
-  resolve(process.env.GRAPH_KB_DATA_DIR ?? ".graph-kb/dev"),
-).open();
+const dataRoot = resolve(process.env.GRAPH_KB_DATA_DIR ?? ".graph-kb/dev");
+const cloudSettings = await new CloudSettings(dataRoot).open();
+const store = await new LibraryStore(dataRoot, { cloudSettings }).open();
 const token = randomBytes(32).toString("hex");
-const cloudSettings = await new CloudSettings(store.root).open();
-const tools = new KnowledgeTools(store, { cloudSettings });
+const tools = store;
 await store.run(() => tools.expireTrash());
 const api = await startApi(tools, token);
 const purgeTimer = setInterval(

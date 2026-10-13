@@ -1,33 +1,42 @@
 {
   "date": "2026-10-13",
-  "version": "0.1.3",
-  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.1.3_x64-setup.exe",
-  "bytes": 30415748,
-  "sha256": "00fa97fa8aa7978f8a9ee73daca5748e55dd984177e9fa5ca0fc28973da4693a",
+  "version": "0.2.0",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.0_x64-setup.exe",
+  "bytes": 30420643,
+  "sha256": "409b67734933c1442214434204655ed7d6694f7d0f9074d3e36b8a394268eb6f",
   "platform": "windows-x64",
   "signed": false,
   "installerExitCode": 0,
   "installedAt": ".tools/installed-smoke",
   "installedServiceFilesMatchSource": true,
-  "installedExecutableComparison": "Identical to release exe except Tauri NSIS bundle marker UNK -> NSS (3 bytes)",
+  "installedExecutableComparison": "Identical to release exe except expected NSIS bundle marker",
   "nativeVerification": [
     "Installed executable: isolated graph and WebView data, empty PATH, temporary working directory, clean exit",
-    "Actual right-click edge menu, label edit/display, persisted REST readback and trash restore preserve label",
-    "Inline editor, tree context menu, parent/child creation, graph, native node-link windows, settings default off"
+    "Database export and independent copy import, edge labels, trash restore, inline editor, node menus, native links"
   ],
   "tests": {
-    "backend": 40,
-    "ui": 11,
-    "uiScope": "Full browser UI suite, including edge labels",
+    "backend": 47,
+    "ui": 13,
+    "uiScope": "Full browser UI including database import/export, collision rejection, copy and cross-library references",
     "standaloneRuntime": 1,
-    "migration": "Legacy relationship tables, interrupted one-table upgrade, repeated reopen, old JSON import"
+    "migration": "Shared graph split, deleted KB restoration, missing-document failure/retry, independent physical DBs, workspace lock, catalog rebuild",
+    "recovery": "Post-commit file promotion failure recovers journal before database export"
+  },
+  "actualDataMigration": {
+    "version": "0.2.0",
+    "migrationPerformed": true,
+    "activeLibraries": 1,
+    "physicalLibraries": 3,
+    "legacyLibrariesCompared": 3,
+    "verification": "Node IDs/attributes, graph edges/labels, Markdown with stable reference qualification, unexpired trash, attachment bytes and extraction cache compared",
+    "legacyBackupRetained": true
   },
   "liveCodexConfiguration": {
     "changed": false,
     "environmentKeys": [
       "GRAPH_KB_CONNECTION_FILE"
     ],
-    "note": "Client must reload MCP tools after upgrade; user application left closed after isolated installed test"
+    "note": "Reload MCP tool catalog for 34 tools; user application left closed after migration"
   },
   "cloudProviderLiveTest": "not run: no user API key or model configured"
 }

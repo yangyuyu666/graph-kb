@@ -32,6 +32,8 @@ const definitions = [
   ],
   ["list_kbs", "列出知识库", {}, []],
   ["create_kb", "创建知识库", { name: string }, ["name"]],
+  ["export_database", "导出完整独立知识库备份，含回收站", { kbId: id }, ["kbId"]],
+  ["import_database", "导入整库备份为迁移恢复或独立副本", { data: { type: "object" }, mode: { enum: ["restore", "copy"] } }, ["data"]],
   ["rename_kb", "重命名知识库", { id, name: string }, ["id", "name"]],
   ["delete_kb", "整库进入 30 天回收站", { id }, ["id"]],
   ["list_nodes", "列出可见节点", { kbId: id }, ["kbId"]],
@@ -181,7 +183,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.1.3" },
+      serverInfo: { name: "graph-kb", version: "0.2.0" },
       instructions,
     });
   }

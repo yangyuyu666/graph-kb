@@ -6,6 +6,8 @@ Graph KB 是本地 Markdown 知识管理桌面应用，图谱是底层数据模�
 
 后台 Concept 是从正文抽取出的概念，不出现在目录和可见图谱，不能用 create_node 创建，也不能用 get_node/update_doc 当普通页面编辑。query_neighbors 可发现概念，related 按共享概念找相关文档，merge_concepts 用于用户明确要求的概念纠正。
 
+0.2.0 起每个知识库独占 `libraries/<知识库UUID>/`，包含独立 graph.kuzu、Markdown、附件与回收站。应用的位置清单只用于定位，不是共享图库。旧共享数据库在启动时自动迁移并保留原文件作为备份；API/MCP 的 ID 不变。
+
 ## 2. 用户在界面上怎样操作
 
 - 进入知识库后，顶部“图谱 / 目录”切换视图，两种视图不会复制数据。
@@ -14,6 +16,7 @@ Graph KB 是本地 Markdown 知识管理桌面应用，图谱是底层数据模�
 - 图谱右键线条 → 编辑边文字 → 保存，文字显示在线条旁；也可从节点的“管理关系 → 修改”填写。留空保存清除文字。
 - 图谱和目录均右键节点打开操作菜单：创建子节点、重命名、关系管理、仅删除当前节点、级联删除、在新窗口打开。
 - 导入和导出位于知识库顶部；回收站用于恢复删除批次；设置用于配置云端自动建图及查看 MCP 连接信息。
+- 整库迁移使用首页“导入知识库”和卡片 `⋯ → 导出知识库`，生成或读取 `.graphkb.json`。与知识库内部的文档导入/导出分开，完整保留回收站与原 ID。
 
 MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动切换窗口。AI 应按用户意图读写实际对象，不把一次查询当作新建或修改请求。
 
@@ -33,7 +36,8 @@ MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动�
 - 两种边均有 label 文字属性，最多 200 字符，去除首尾空白；空字符串表示无标签。label 只是注释，不是新增语义关系类型，不改变结构约束。自动维护已有平行边不会清空文字；关系因结构变化被删除时其文字也随边移除。JSON 导出/导入及回收站恢复保留标签；旧数据库和旧 JSON 中缺失标签视为空字符串。
 - get_graph 返回可见 nodes/edges，关系有完整 id：`TYPE:sourceUUID:targetUUID`。创建/修改关系返回的端点可能规范化，重新读取图谱取得关系 ID；不要用节点 UUID 调用 delete_edge。
 - get_graph 有 center 时按 1–3 跳无向邻域筛选；query_path 也是无向最短路径，返回边仍保留真实方向。query_neighbors 包括 Concept，但其结果不提供边的完整方向，不能据此判断谁是谁的父节点。无向邻域不是无限深度的“所有后代”。
-- 普通引用写成 `[文档标题](node:实际节点UUID)`，只存正文，不新建关系。backlinks 查反向链接，resolve_links 检查目标；deleted 也可能表示不存在或隐藏 Concept，不保证回收站里一定有记录。
+- 新引用写成 `[文档标题](node:知识库UUID/节点UUID)`，旧的 node:节点UUID 仍兼容。复制链接及引用节点对话框会使用带库 ID 的形式，引用对话框可选择其他知识库。backlinks 汇总各已加载库的反向链接，不新建跨库图边。
+- resolve_links 的 ids 接受 `库UUID/节点UUID` 或旧节点 UUID；返回原 id、nodeId、kbId、state 和可用时的 title。state=unavailable 表示目标库未加载或旧裸 ID 无法定位；保留链接，导入目标库后再检查。deleted 表示库已加载但节点删除/不存在/隐藏，不保证能从回收站恢复。文件夹位置变化不会改变带稳定 ID 的引用。
 - 附件先 upload_asset，再按需要用 `[文件名](asset:实际附件UUID)` 或图片 Markdown 写入正文；附件上传不会自动插入链接。
 
 ## 5. 常见调用示例
@@ -85,6 +89,18 @@ single 默认只删指定节点及其关联边，其他节点保留；失去最�
 
 ### 导入与导出
 
+#### 完整知识库迁移与副本
+
+先 `export_database({kbId})`，将返回的完整对象保存为 `.graphkb.json`；导入时使用 `import_database({data:完整对象,mode:"restore"})`，data 不是文件路径。
+
+export_database 返回 format=graph-kb-database/version=1 的整库数据对象，包含图、正文、边标签、附件、回收站与缓存，不直接写磁盘，不包含云端密钥或本机连接信息。
+
+import_database 默认 mode=restore 保留所有 ID，在新机器或空工作区恢复；已存在的库或对象 ID 会报 DATABASE_EXISTS，不覆盖。mode=copy 会新建库和对象 ID，重写内部文档/附件链接，保留外部库引用；缓存可重建，不复制旧缓存。不要为了绕过冲突擅自选择 copy，迁移后已有外部引用通常依赖原 ID。
+
+来源库的备份不会包含被引用的其他库，目标需另行导入。整库包当前最多 24 MiB；超限提示 DATABASE_TOO_LARGE，可让用户关闭应用后复制完整单库目录（含 library.json）到目标工作区的 libraries 下，保留 UUID 目录名并重启。已有同名目录不能覆盖。应用从目录重建 catalog.json；它不保存第二份图数据。
+
+#### 向现有知识库导入文档或导出选定内容
+
 ```json
 {"name":"import_kb","arguments":{"kbId":"<目标库UUID>","format":"markdown","files":[{"path":"项目/笔记.md","text":"# 笔记\n\n正文。"}]}}
 {"name":"import_kb","arguments":{"kbId":"<目标库UUID>","format":"csv","files":[{"path":"notes.csv","text":"id,title,parentId,markdown\na,父节点,,父正文\nb,子节点,a,子正文"}]}}
@@ -106,6 +122,7 @@ export_kb 返回 JSON 数据（含 nodes、edges、assets、Markdown files），
 | get_usage_guide | 本手册 Markdown；不含用户数据 |
 | list_kbs / get_kb | id、name、nodeCount、updatedAt |
 | create_kb / rename_kb | 容器 id、name |
+| export_database / import_database | 完整整库对象 / 导入后的 id、name；保留 ID 迁移或新 ID 副本 |
 | delete_kb / delete_node | 回收站批次 id、deletedCount、mode 等 |
 | list_nodes | 可见节点元数据；无正文、revision、父子树 |
 | create_node / get_node | 节点属性、markdown、revision |
@@ -116,7 +133,7 @@ export_kb 返回 JSON 数据（含 nodes、edges、assets、Markdown files），
 | search | 节点属性及 excerpt，q 最多 500 字符 |
 | backlinks | 引用目标的可见节点数组 |
 | related | 相关节点及共享概念数量 score |
-| resolve_links | id、state、可用时的 title；ids 最多 1000 项 |
+| resolve_links | id、nodeId、kbId、state、可用时的 title；ids 最多 1000 项 |
 | get_edge | 关系 id、type、source、target、label |
 | create_edge / update_edge | id、type、source、target、label；之后可刷新图谱 |
 | delete_edge | deleted=true |

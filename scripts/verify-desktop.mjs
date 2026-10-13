@@ -270,6 +270,11 @@ try {
       .length,
     2,
   );
+  const database = await main.evaluate(`qaRequest('/api/databases/${saved.kbId}/export', 'POST', {})`);
+  assert.equal(database.format, "graph-kb-database");
+  const imported = await main.evaluate(`qaRequest('/api/databases/import', 'POST', ${JSON.stringify({ data: database, mode: "copy" })})`);
+  assert.notEqual(imported.id, saved.kbId);
+  assert.equal((await main.evaluate(`qaRequest('/api/kbs/${imported.id}/graph')`)).nodes.length, 2);
   const linked = await main.evaluate(
     `qaRequest('/api/nodes', 'POST', { kbId: ${JSON.stringify(saved.kbId)}, title: '原生关联文档' })`,
   );
@@ -320,7 +325,7 @@ try {
     `setTimeout(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'main'}), 100)`,
   );
   console.log(
-    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
+    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, database export/copy import, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
   );
 } finally {
   for (const connection of connections) connection.close();

@@ -159,7 +159,7 @@ test("Markdown 导入、全文搜索、附件保存与 MCP 配置入口", async 
     mimeType: "text/plain",
     buffer: Buffer.from("实际附件"),
   });
-  await expect(doc.getByRole("status")).toContainText("附件已添加");
+  await expect(doc.locator('.ProseMirror a[href^="asset:"]')).toContainText("附件.txt");
   await doc.getByRole("button", { name: "保存", exact: true }).click();
   await expect(doc.getByRole("status")).toContainText("已保存");
   await doc.reload();

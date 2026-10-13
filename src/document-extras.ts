@@ -1,4 +1,4 @@
-import { api, type PageNode } from "./api";
+import { api, type PageNode, type KnowledgeBase } from "./api";
 import { element as e, button, modal, field, download, nameDialog } from "./ui";
 import { insert } from "@milkdown/kit/utils";
 import type { Crepe } from "@milkdown/crepe";
@@ -28,7 +28,7 @@ export function documentExtras(
     button("嵌入媒体", () => embed()),
     button("引用节点", () => reference()),
     button("复制节点链接", async () => {
-      const text = `[${node.title}](node:${node.id})`;
+      const text = `[${escapeLabel(node.title)}](node:${node.kbId}/${node.id})`;
       try {
         await navigator.clipboard.writeText(text);
         status("节点链接已复制");
@@ -90,19 +90,34 @@ export function documentExtras(
   }
   function reference() {
     const m = modal("引用节点");
+    const library = e("select");
+    library.setAttribute("aria-label", "目标知识库");
+    field(m.form, "目标知识库", library);
     const select = e("select");
+    select.setAttribute("aria-label", "目标节点");
     field(m.form, "目标节点", select);
-    void api<PageNode[]>(`/api/kbs/${node.kbId}/nodes`)
-      .then((nodes) => {
+    let version = 0;
+    async function load() {
+      const current = ++version; select.replaceChildren(); m.submit.disabled = true;
+      try {
+        const nodes = await api<PageNode[]>(`/api/kbs/${library.value}/nodes`);
+        if (current !== version || !m.dialog.isConnected) return;
         for (const n of nodes) select.append(new Option(n.title, n.id));
-      })
-      .catch((error) => (m.error.textContent = String(error)));
+        m.submit.disabled = !nodes.length;
+      } catch (error) { m.error.textContent = String(error); }
+    }
+    library.onchange = () => void load();
+    m.submit.disabled = true;
+    void api<KnowledgeBase[]>("/api/kbs").then(async kbs => {
+      for (const kb of kbs) library.append(new Option(kb.name, kb.id));
+      library.value = node.kbId; await load();
+    }).catch(error => m.error.textContent = String(error));
     m.form.onsubmit = (event) => {
       event.preventDefault();
       if (!select.value) return;
       crepe.editor.action(
         insert(
-          `[${escapeLabel(select.selectedOptions[0].text)}](node:${select.value})`,
+          `[${escapeLabel(select.selectedOptions[0].text)}](node:${library.value}/${select.value})`,
         ),
       );
       m.dialog.close();

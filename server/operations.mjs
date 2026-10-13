@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
+import { rewriteReferences } from "./node-links.mjs";
 const fail = (message, code = "INVALID_INPUT") =>
   new ToolError(code, message, "检查输入并刷新后重试");
 const types = ["Page", "Tag", "File", "Person", "Task", "Concept"];
@@ -540,8 +541,8 @@ export const mvpMethods = {
       .map((n) => ({
         path: `${n.id}.md`,
         text: n.markdown
-          .replace(/node:([0-9a-f-]{36})/gi, (match, id) =>
-            ids.has(id) ? `./${id}.md` : match,
+          .replace(/node:([0-9a-f-]{36})(?:\/([0-9a-f-]{36}))?/gi, (match, first, second) =>
+            (!second || first === kbId) && ids.has(second ?? first) ? `./${second ?? first}.md` : match,
           )
           .replace(/asset:([0-9a-f-]{36})/gi, "./assets/$1"),
       }));
@@ -701,7 +702,9 @@ export const mvpMethods = {
           Buffer.byteLength(n.markdown) > 1024 * 1024
         )
           throw fail("节点类型或文档大小无效");
-        let markdown = n.markdown;
+        let markdown = rewriteReferences(n.markdown, ref =>
+          ref.kbId === data?.kb?.id && mapping.has(ref.id) ? `${kbId}/${mapping.get(ref.id)}` : undefined,
+        );
         for (const [old, id] of mapping) {
           const escaped = old.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           markdown = markdown.replace(

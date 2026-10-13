@@ -3,6 +3,7 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { renderLibrary } from "./library";
 import { mountDocument } from "./document-view";
 import "./style.css";
+import { api } from "./api";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 function el<T extends HTMLElement>(selector: string): T {
@@ -14,6 +15,11 @@ function message(error: unknown) {
 }
 
 async function openDocument(id: string) {
+  if (id.includes("/")) {
+    const [link] = await api<{ nodeId: string; state: string }[]>("/api/tools", "POST", { name: "resolve_links", arguments: { ids: [id] } });
+    if (link.state !== "active") throw Error(link.state === "unavailable" ? "目标知识库未加载，请先导入目标知识库" : "目标节点已删除");
+    id = link.nodeId;
+  }
   if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error("内部链接无效");
   if (isTauri()) {
     const label = `doc-${id}`;

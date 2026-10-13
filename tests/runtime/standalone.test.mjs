@@ -4,7 +4,7 @@ import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -55,6 +55,8 @@ test('复制出仓库的运行时在空 PATH 下加载 Kùzu、写入、重启�
   const page = await first.request('/api/nodes', 'POST', { kbId: kb.id, title: '持久化' });
   await first.request(`/api/nodes/${page.id}`, 'PATCH', { revision: 0, markdown: '不依赖本机 Node 或仓库文件' });
   await stop(first.child);
+  await access(join(root, 'data', 'libraries', kb.id, 'graph.kuzu'));
+  await access(join(root, 'data', 'libraries', kb.id, 'documents', `${page.id}.md`));
   const second = await start();
   assert.equal((await second.request(`/api/nodes/${page.id}`)).markdown, '不依赖本机 Node 或仓库文件');
   await stop(second.child);

@@ -800,6 +800,16 @@ input {
   color: #aaa;
   text-decoration: line-through;
 }
+.unavailable-reference {
+  font-size: inherit !important;
+  pointer-events: auto;
+  color: #888;
+}
+.unavailable-reference::after {
+  content: "（目标知识库未加载）";
+  font-size: 12px;
+  text-decoration: none;
+}
 
 .node-context-menu {
   position: fixed;
