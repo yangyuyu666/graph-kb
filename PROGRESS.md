@@ -115,7 +115,7 @@ npm 元数据中未发现 GPL/AGPL/LGPL；Lightning CSS 的 MPL-2.0 仅为构建
 |---|---|---|
 | 缺 Rust/Cargo、MSVC C++ Build Tools、Windows SDK | 无法编译/运行 Tauri 壳，未生成 Cargo.lock；原生窗口权限未验 | 安装官方依赖后运行 npm run desktop，验证多窗口与退出 |
 | Node/Kùzu sidecar 发行打包未验证 | 桌面目前仅开发态，依赖本机 Node 和源码 | 原生构建后验证自包含运行时、绑定加载、第三方声明、安装包；目前 bundle 关闭，release 入口明确拒绝启动 |
-| 无 LLM 配置/API Key，默认来源未定 | 真实抽取链路、质量、速度、成本未验 | 用户确认来源后接适配器；当前关闭且只用测试夹具，不假定供应商 |
+| 已确认先用云端 API，但供应商、模型、接口地址及 API Key 未配置 | 真实抽取链路、质量、速度、成本未验 | 确认具体云端服务后接适配器；自动抽取仍默认关闭，当前仅用测试夹具 |
 | Apache-2.0 / MIT 未确认 | 未创建主仓库 LICENSE，不称为已发布开源产品 | 已向用户提问，等待选择，不阻塞本地开发 |
 
 环境要求依据：[Tauri 官方 Windows prerequisites](https://v2.tauri.app/start/prerequisites/)。本次未全局安装大型 SDK，也未空等。
