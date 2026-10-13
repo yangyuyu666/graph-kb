@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.tools/
+.graph-kb/
+src-tauri/target/
+test-results/
+playwright-report/
+*.log
+.env
+.env.*
+!.env.example
+# Existing local Codex diagnostics are not product source.
+/*.ps1
+/*.txt
+!/scripts/*.ps1
