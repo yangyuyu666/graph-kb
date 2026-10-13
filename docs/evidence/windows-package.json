@@ -1,9 +1,9 @@
 {
   "date": "2026-10-13",
-  "version": "0.1.0",
-  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.1.0_x64-setup.exe",
-  "bytes": 30401910,
-  "sha256": "63f21387f69db5c4f5bf2a83d87b72348b5a5571f098e8946ae58b651ed2e030",
+  "version": "0.1.1",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.1.1_x64-setup.exe",
+  "bytes": 30402455,
+  "sha256": "9bd29377e6a7cb58498f2b2a2f1f7b60bccc87f4273c78a8bd919f856cad910e",
   "platform": "windows-x64",
   "signed": false,
   "installerExitCode": 0,
@@ -11,15 +11,16 @@
   "installedServiceFilesMatchSource": true,
   "installedExecutableComparison": "Identical to release exe except Tauri NSIS bundle marker UNK -> NSS (3 bytes)",
   "nativeVerification": [
-    "installed release with empty PATH, temporary working directory and isolated graph data",
-    "Tauri IPC, parent-child tree creation, Cytoscape canvas, trash/restore",
-    "Milkdown Chinese editing, persisted Kuzu document, independent node-link windows, default-off settings, clean close"
+    "release and installed release, empty PATH, temporary working directory, isolated graph and WebView data",
+    "Inline Markdown editing and saving; directory context menu and child creation",
+    "Actual right mouse click on Cytoscape node opens context menu; Escape closes it; no extra window",
+    "Trash/restore, independent node-link windows, default-off settings, clean close"
   ],
   "tests": {
-    "backend": 30,
-    "ui": 6,
-    "additionalUiRerun": 3,
-    "standaloneRuntime": 1
+    "backend": 31,
+    "ui": 10,
+    "uiExecution": "9 full-suite tests plus focused quick-save regression",
+    "standaloneRuntime": "previous MVP validation; native packaged service revalidated"
   },
   "cloudProviderLiveTest": "not run: no user API key or model configured"
 }

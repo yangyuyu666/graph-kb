@@ -1,6 +1,6 @@
 # graph-kb
 
-基于知识图谱的本地知识管理应用，当前为 **0.1.0 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
+基于知识图谱的本地知识管理应用，当前为 **0.1.1 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
 
 ## 开发运行
 
@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-打开 <http://127.0.0.1:1420>。新建知识库 → 进入目录 → 创建顶级节点 / 节点旁 ＋ 创建子节点 → 点击文档打开独立窗口 → Milkdown 编辑 → 保存或 Ctrl+S → 重新打开。数据实际落在 Kùzu 与 Markdown 文件中。
+打开 <http://127.0.0.1:1420>。新建知识库 → 进入目录 → 创建顶级节点 / 右键创建子节点 → 左键在右侧编辑（右键可选独立窗口） → Milkdown 编辑 → 保存或 Ctrl+S → 重新打开。数据实际落在 Kùzu 与 Markdown 文件中。
 
 本次环境缺少 PATH 中的 npm，已在忽略目录 `.tools/package` 放置本地 npm。**这台机器可直接运行 `node scripts/dev.mjs`**；npm 命令可用 `node .tools/package/bin/npm-cli.js run build` 等替代。此工具目录不纳入仓库，新环境安装标准 Node/npm 即可。
 
@@ -93,7 +93,9 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 **连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。应用保持打开；每次应用重启端口/Key 会变，要重新复制。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。连接配置包含本地会话凭据，请勿提交 Git。工具覆盖 CRUD、邻域、路径、全文、导入导出、回收站、概念合并、附件和设置。
 
-**常用操作：** 知识库顶部切换“图谱 / 目录”；每个目录节点右侧 ＋ 创建子节点、⋯ 管理关系；图谱控制区选择中心/跳数/路径终点，画布下方导出 PNG 或当前子图；全库导出用顶部“导出”。Markdown ZIP 含结构清单 graph.json，可用 JSON 导入完整还原并重映射 ID；CSV 必须有 title，可选 id、parentId、markdown、kind。所有导入事务整批校验，失败不留半份图。
+**常用操作：** 知识库顶部切换“图谱 / 目录”；目录节点左键在右侧编辑，左右分栏可拖动；图谱和目录均右键打开节点操作菜单（创建子节点、重命名、关系管理、两种删除、新窗口打开），图谱左键仍开独立窗口；图谱控制区选择中心/跳数/路径终点，画布下方导出 PNG 或当前子图；全库导出用顶部“导出”。Markdown ZIP 含结构清单 graph.json，可用 JSON 导入完整还原并重映射 ID；CSV 必须有 title，可选 id、parentId、markdown、kind。所有导入事务整批校验，失败不留半份图。
+
+删除节点可指定 DELETE /api/nodes/{id}?mode=single 或 mode=cascade；默认 single 仅删当前节点，cascade 删除独占后代，保留有外部父节点的共享分支。MCP delete_node 也接受 mode。两种删除均进入回收站，可整批恢复。
 
 回收站保留 30 天，运行时每小时清理，启动和请求维护也检查。恢复尽量恢复原边，因其他节点删除或结构变化产生的冲突边会跳过并提示。图谱/目录隐藏 Concept；后台纠正及合并可经 MCP 完成。候选池功能不在本版，逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)。
 
