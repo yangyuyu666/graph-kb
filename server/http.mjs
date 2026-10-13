@@ -41,7 +41,9 @@ export async function startApi(tools, token, port = 0) {
       const node = path.match(/^\/api\/nodes\/([^/]+)$/);
       const neighbors = path.match(/^\/api\/nodes\/([^/]+)\/neighbors$/);
       const kbNodes = path.match(/^\/api\/kbs\/([^/]+)\/nodes$/);
-      if (path === '/api/kbs' && req.method === 'GET') operation = 'list_kbs';
+      if (path === '/api/settings' && req.method === 'GET') operation = 'get_settings';
+      else if (path === '/api/settings' && req.method === 'PATCH') operation = 'update_settings';
+      else if (path === '/api/kbs' && req.method === 'GET') operation = 'list_kbs';
       else if (path === '/api/kbs' && req.method === 'POST') operation = 'create_kb';
       else if (path === '/api/nodes' && req.method === 'POST') operation = 'create_node';
       else if (kbNodes && req.method === 'GET') { operation = 'list_nodes'; input = { kbId: kbNodes[1] }; }

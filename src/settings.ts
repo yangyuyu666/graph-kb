@@ -1,0 +1,59 @@
+import { api } from './api';
+
+export interface CloudConfig {
+  enabled: boolean; provider: string; model: string; baseUrl: string; hasApiKey: boolean;
+  providers: { id: string; name: string; baseUrl: string }[];
+}
+
+export async function renderSettings(container: HTMLElement) {
+  container.innerHTML = `<header><div><h1>设置</h1><p>云端模型与自动建图</p></div></header><p id="status" role="status"></p>
+  <form id="cloud-form" class="settings-form">
+    <label>供应商<select id="provider"><option value="">请选择供应商</option></select></label>
+    <label>API 基础地址<input id="base-url" type="url" placeholder="https://…" autocomplete="off" /></label>
+    <label>模型 ID<input id="model" maxlength="200" placeholder="填写供应商提供的模型 ID" autocomplete="off" /></label>
+    <label>API Key<input id="api-key" type="password" autocomplete="off" spellcheck="false" maxlength="4096" /></label>
+    <p id="key-status" class="hint"></p>
+    <label class="switch"><input id="extraction-enabled" type="checkbox" />开启自动建图</label>
+    <p class="hint">开启后，每次保存会将该文档正文发送给所选云端服务用于提取概念，可能产生 API 费用。抽取失败时正文仍保存在本地。</p>
+    <p class="hint">API Key 与开关仅在本次运行有效，重启后需要重新配置并开启。供应商、地址与模型保存在本地。</p>
+    <div class="actions"><button id="clear-key" type="button">清除 API Key</button><button class="primary" type="submit">保存设置</button></div>
+  </form>`;
+  const select = container.querySelector<HTMLSelectElement>('#provider')!;
+  const base = container.querySelector<HTMLInputElement>('#base-url')!;
+  const model = container.querySelector<HTMLInputElement>('#model')!;
+  const key = container.querySelector<HTMLInputElement>('#api-key')!;
+  const enabled = container.querySelector<HTMLInputElement>('#extraction-enabled')!;
+  const status = container.querySelector<HTMLElement>('#status')!;
+  let config = await api<CloudConfig>('/api/settings');
+  for (const provider of config.providers) {
+    const option = document.createElement('option'); option.value = provider.id; option.textContent = provider.name; select.append(option);
+  }
+  function reflect() {
+    select.value = config.provider; base.value = config.baseUrl; model.value = config.model;
+    enabled.checked = config.enabled; key.value = '';
+    key.placeholder = config.hasApiKey ? '已配置，留空保留当前 Key' : '仅在本次运行中保留';
+    container.querySelector('#key-status')!.textContent = config.hasApiKey ? 'API Key 已配置' : '尚未配置 API Key';
+  }
+  reflect();
+  select.onchange = () => {
+    base.value = config.providers.find(p => p.id === select.value)?.baseUrl ?? '';
+    model.value = ''; key.value = ''; enabled.checked = false;
+    key.placeholder = '请输入所选服务的 API Key';
+    container.querySelector('#key-status')!.textContent = '更换供应商或地址后，必须重新输入 Key';
+  };
+  const form = container.querySelector<HTMLFormElement>('#cloud-form')!;
+  async function save(clear = false) {
+    const buttons = [...form.querySelectorAll<HTMLButtonElement>('button')];
+    buttons.forEach(button => button.disabled = true);
+    try {
+      const payload: Record<string, unknown> = { provider: select.value, baseUrl: base.value.trim().replace(/\/+$/, ''), model: model.value.trim(), enabled: clear ? false : enabled.checked };
+      if (clear || key.value) payload.apiKey = clear ? '' : key.value.trim();
+      config = await api<CloudConfig>('/api/settings', 'PATCH', payload);
+      reflect();
+      status.textContent = clear ? 'API Key 已清除，自动建图已关闭' : '设置已保存';
+    } catch (error) { status.textContent = error instanceof Error ? error.message : '保存设置失败'; }
+    finally { buttons.forEach(button => button.disabled = false); }
+  }
+  form.onsubmit = event => { event.preventDefault(); void save(); };
+  container.querySelector<HTMLButtonElement>('#clear-key')!.onclick = () => void save(true);
+}

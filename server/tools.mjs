@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { ToolError, requireId, requireText } from './errors.mjs';
+import { parseEntities } from './cloud-extractor.mjs';
 
 // Shared write boundary for UI/REST and future MCP adapters. No raw Cypher endpoint.
 export class KnowledgeTools {
-  constructor(store, { extractor = null, extractionEnabled = false } = {}) {
+  constructor(store, { extractor = null, extractionEnabled = false, cloudSettings = null } = {}) {
     this.store = store;
     this.extractor = extractor;
     this.extractionEnabled = extractionEnabled;
+    this.cloudSettings = cloudSettings;
   }
   execute(name, input = {}) {
     const operations = {
@@ -14,9 +16,14 @@ export class KnowledgeTools {
       list_nodes: () => this.listNodes(input), create_node: () => this.createNode(input),
       get_node: () => this.getNode(input), update_doc: () => this.updateDoc(input),
       create_edge: () => this.createEdge(input), query_neighbors: () => this.neighbors(input),
+      get_settings: () => this.settings().public(), update_settings: () => this.settings().update(input),
     };
     if (!Object.hasOwn(operations, name)) throw new ToolError('UNKNOWN_TOOL', '工具不存在', '使用已支持的工具');
     return this.store.run(operations[name]);
+  }
+  settings() {
+    if (!this.cloudSettings) throw new ToolError('SETTINGS_UNAVAILABLE', '此服务未启用云端配置', '使用应用入口启动服务');
+    return this.cloudSettings;
   }
   async mustNode(id) {
     const node = await this.store.node(requireId(id));
@@ -70,36 +77,48 @@ export class KnowledgeTools {
       throw new ToolError('INVALID_DOCUMENT', '正文须为不超过 1 MiB 的 Markdown', '缩小文档后重试');
     if (!Number.isSafeInteger(revision) || revision !== node.revision)
       throw new ToolError('REVISION_CONFLICT', '文档已被其他窗口修改', '重新打开文档后合并修改', 409);
-    let entities = [];
-    if (this.extractionEnabled) {
-      if (!this.extractor) throw new ToolError('EXTRACTOR_UNCONFIGURED', '尚未配置模型', '配置模型后再开启抽取');
-      entities = await this.extractor.extract(markdown);
-      if (!Array.isArray(entities) || entities.length > 100) throw new ToolError('INVALID_EXTRACTION', '抽取结果格式无效', '模型须返回最多 100 个实体');
+    const enabled = this.cloudSettings?.enabled ?? this.extractionEnabled;
+    const extractor = this.cloudSettings ? this.cloudSettings.extractor() : this.extractor;
+    if (enabled && !extractor) throw new ToolError('EXTRACTOR_UNCONFIGURED', '尚未配置模型', '配置模型后再开启抽取');
+    const updatedAt = new Date().toISOString();
+    // Save the user's document before any network operation. A cloud failure must
+    // not discard a local edit or leave the caller retrying an ambiguous revision.
+    await this.store.transaction([{ id, markdown }], () => this.store.query('MATCH (n:Node {id: $id}) SET n.updatedAt = $updatedAt, n.revision = $revision', { id, updatedAt, revision: revision + 1 }));
+    const result = { id, revision: revision + 1, updatedAt, extraction: 'disabled', conceptCount: 0 };
+    if (!enabled) return result;
+    try {
+      const entities = parseEntities(JSON.stringify({ entities: await extractor.extract(markdown) }));
+      result.conceptCount = await this.attachConcepts(node, entities);
+      result.extraction = 'completed';
+    } catch (error) {
+      result.extraction = 'failed';
+      result.warning = { code: error instanceof ToolError ? error.code : 'EXTRACTION_FAILED', message: error instanceof ToolError ? error.message : '抽取或概念入图失败，请检查配置；若本地存储异常请重启服务' };
     }
-    const documents = [{ id, markdown }];
+    return result;
+  }
+  async attachConcepts(node, entities) {
+    const documents = [];
     const concepts = new Map();
     for (const entity of entities) {
       const title = requireText(entity.name, '概念名称');
       requireText(entity.type, '概念类型');
       const summary = requireText(entity.summary, '概念简介', 4000);
-      // Phase 0 conservative exact-name fixture alignment, not semantic merging.
+      // Conservative exact-name alignment, not semantic merging.
       const conceptKey = title.normalize('NFC');
       if (concepts.has(conceptKey)) continue;
       const [existing] = await this.store.query("MATCH (n:Node {kbId: $kbId, kind: 'Concept', conceptKey: $conceptKey}) RETURN n.id AS id", { kbId: node.kbId, conceptKey });
       const concept = { id: existing?.id ?? randomUUID(), kbId: node.kbId, kind: 'Concept', title, conceptKey, updatedAt: new Date().toISOString(), revision: 0, existing: !!existing };
       concepts.set(conceptKey, concept);
-      if (!existing) documents.push({ id: concept.id, markdown: `# ${title}\n\n${summary}\n` });
+      if (!existing) documents.push({ id: concept.id, markdown: `# ${title}\n\n类型：${entity.type}\n\n${summary}\n` });
     }
-    const updatedAt = new Date().toISOString();
     await this.store.transaction(documents, async () => {
-      await this.store.query('MATCH (n:Node {id: $id}) SET n.updatedAt = $updatedAt, n.revision = $revision', { id, updatedAt, revision: revision + 1 });
       for (const concept of concepts.values()) {
         if (!concept.existing) { const { existing, ...record } = concept; await this.insertNode(record); }
-        await this.validateEdge('CHILD_OF', concept.id, id);
-        await this.writeEdge('CHILD_OF', concept.id, id);
+        await this.validateEdge('CHILD_OF', concept.id, node.id);
+        await this.writeEdge('CHILD_OF', concept.id, node.id);
       }
     });
-    return { id, revision: revision + 1, updatedAt, extraction: this.extractionEnabled ? 'completed' : 'disabled', conceptCount: concepts.size };
+    return concepts.size;
   }
   async validateEdge(type, source, target) {
     if (!['CHILD_OF', 'SIBLING_OF'].includes(type)) throw new ToolError('INVALID_EDGE_TYPE', '仅支持从属和平行两种关系', '引用请使用 node:<id> 文档链接');

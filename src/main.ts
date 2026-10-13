@@ -3,6 +3,7 @@ import { linkSchema } from '@milkdown/kit/preset/commonmark';
 import { isTauri } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { api, type KnowledgeBase, type PageNode } from './api';
+import { renderSettings, type CloudConfig } from './settings';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 import './style.css';
@@ -28,7 +29,12 @@ async function openDocument(id: string) {
 }
 
 async function home() {
-  app.innerHTML = `<aside><div class="brand">${icon}<b>知识图谱</b></div><button class="nav active">◦　知识库</button><div class="workspace"><span>本</span>本地工作区</div></aside><main><header><div><h1>知识库 <small id="count"></small></h1><p>让知识相互连接</p></div><button class="primary" id="new-kb">＋ 新建知识库</button></header><p id="status" role="status"></p><div id="content"></div><footer>Phase 0 技术验证 · 自动建图默认关闭</footer></main>`;
+  app.innerHTML = `<aside><div class="brand">${icon}<b>知识图谱</b></div><button id="home-nav" class="nav active">◦　知识库</button><button id="settings-nav" class="nav">◦　设置</button><div class="workspace"><span>本</span>本地工作区</div></aside><main><header><div><h1>知识库 <small id="count"></small></h1><p>让知识相互连接</p></div><button class="primary" id="new-kb">＋ 新建知识库</button></header><p id="status" role="status"></p><div id="content"></div><footer>Phase 0 技术验证 · 自动建图默认关闭</footer></main>`;
+  el('#settings-nav').onclick = () => {
+    el('#home-nav').classList.remove('active'); el('#settings-nav').classList.add('active');
+    void renderSettings(el('main')).catch(message);
+  };
+  el('#home-nav').onclick = () => home().catch(message);
   const kbs = await api<KnowledgeBase[]>('/api/kbs');
   el('#count').textContent = `${kbs.length} 个`;
   const content = el('#content');
@@ -43,7 +49,6 @@ async function home() {
     content.append(card);
   }
   el('#new-kb').onclick = () => nameDialog('新建知识库', '知识库名称', async name => { await api('/api/kbs', 'POST', { name }); await home(); });
-  el('.nav').onclick = () => home().catch(message);
 }
 
 function nameDialog(title: string, label: string, submit: (name: string) => Promise<void>) {
@@ -85,7 +90,15 @@ async function showKb(kb: KnowledgeBase) {
 
 async function documentView(id: string) {
   app.className = 'document-app';
-  app.innerHTML = `<div class="document"><header><h1 id="title">正在打开…</h1><button id="save" class="primary" disabled>保存</button></header><div class="document-meta"><span id="status" role="status">加载中</span><span>自动建图：关闭</span></div><div id="editor"></div></div>`;
+  app.innerHTML = `<div class="document"><header><h1 id="title">正在打开…</h1><button id="save" class="primary" disabled>保存</button></header><div class="document-meta"><span id="status" role="status">加载中</span><span id="extraction-state">自动建图：读取中</span></div><div id="editor"></div></div>`;
+  const refreshSettings = async () => {
+    try {
+      const config = await api<CloudConfig>('/api/settings');
+      el('#extraction-state').textContent = config.enabled ? `自动建图：${config.providers.find(p => p.id === config.provider)?.name}` : '自动建图：关闭';
+    } catch { el('#extraction-state').textContent = '自动建图：状态不可用'; }
+  };
+  await refreshSettings();
+  window.addEventListener('focus', () => void refreshSettings());
   const node = await api<PageNode>(`/api/nodes/${id}`);
   document.title = node.title;
   if (isTauri()) await WebviewWindow.getCurrent().setTitle(node.title);
@@ -118,12 +131,14 @@ async function documentView(id: string) {
   const doSave = async () => {
     if (save.disabled) return;
     save.disabled = true;
+    el('#status').textContent = '正在保存；开启自动建图时将等待云端抽取…';
     const savingVersion = editVersion;
     try {
-      const result = await api<{ revision: number }>(`/api/nodes/${id}`, 'PATCH', { markdown: crepe.getMarkdown(), revision });
+      const result = await api<{ revision: number; extraction: string; conceptCount: number; warning?: { message: string } }>(`/api/nodes/${id}`, 'PATCH', { markdown: crepe.getMarkdown(), revision });
       revision = result.revision;
       dirty = savingVersion !== editVersion;
-      el('#status').textContent = dirty ? '有未保存的修改' : '已保存到本地 · 图节点已同步';
+      const outcome = result.extraction === 'failed' ? `已保存到本地 · 抽取失败：${result.warning?.message}` : result.extraction === 'completed' ? `已保存到本地 · 已处理 ${result.conceptCount} 个后台概念` : '已保存到本地 · 图节点已同步';
+      el('#status').textContent = dirty ? `${outcome}；仍有新修改未保存` : outcome;
     } catch (error) { message(error); }
     finally { save.disabled = false; }
   };

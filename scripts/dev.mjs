@@ -4,10 +4,12 @@ import { resolve } from 'node:path';
 import { GraphStore } from '../server/graph-store.mjs';
 import { KnowledgeTools } from '../server/tools.mjs';
 import { startApi } from '../server/http.mjs';
+import { CloudSettings } from '../server/cloud-settings.mjs';
 
 const store = await new GraphStore(resolve(process.env.GRAPH_KB_DATA_DIR ?? '.graph-kb/dev')).open();
 const token = randomBytes(32).toString('hex');
-const api = await startApi(new KnowledgeTools(store), token);
+const cloudSettings = await new CloudSettings(store.root).open();
+const api = await startApi(new KnowledgeTools(store, { cloudSettings }), token);
 const vite = await createServer({
   server: { host: '127.0.0.1', port: 1420, strictPort: true, proxy: {
     '/api': { target: api.url, changeOrigin: true, configure(proxy) {

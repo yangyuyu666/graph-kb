@@ -1,0 +1,33 @@
+import { test, expect } from '@playwright/test';
+
+test('云端设置：显式选择服务与模型、Key 不回显、切换供应商需重新配置', async ({ page, request }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置', exact: false }).click();
+  await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByLabel('开启自动建图')).not.toBeChecked();
+  await page.getByLabel('供应商').selectOption('deepseek');
+  await expect(page.getByLabel('API 基础地址')).toHaveValue('https://api.deepseek.com/v1');
+  await expect(page.getByLabel('模型 ID')).toHaveValue('');
+  await page.getByLabel('模型 ID').fill('user-chosen-test-model');
+  await page.getByLabel('API Key', { exact: true }).fill('ui-fixture-not-a-real-secret');
+  await page.getByLabel('开启自动建图').check();
+  await page.getByRole('button', { name: '保存设置' }).click();
+  await expect(page.getByRole('status')).toHaveText('设置已保存');
+  await expect(page.getByLabel('API Key', { exact: true })).toHaveValue('');
+  const configured = await (await request.get('/api/settings')).json();
+  expect(configured.enabled).toBe(true);
+  expect(configured.hasApiKey).toBe(true);
+  expect(JSON.stringify(configured)).not.toContain('ui-fixture');
+  await page.screenshot({ path: 'docs/evidence/cloud-settings.png', fullPage: true });
+  await page.getByLabel('供应商').selectOption('gemini');
+  await expect(page.getByLabel('开启自动建图')).not.toBeChecked();
+  await expect(page.getByLabel('模型 ID')).toHaveValue('');
+  await page.getByRole('button', { name: '保存设置' }).click();
+  await expect(page.getByRole('status')).toHaveText('设置已保存');
+  const switched = await (await request.get('/api/settings')).json();
+  expect(switched.hasApiKey).toBe(false);
+  expect(switched.enabled).toBe(false);
+  await page.getByLabel('开启自动建图').check();
+  await page.getByRole('button', { name: '保存设置' }).click();
+  await expect(page.getByRole('status')).toContainText('云端配置不完整');
+});

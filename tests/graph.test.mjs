@@ -129,12 +129,16 @@ test('正常重启持久化；中文、引号和 Cypher 字样按参数保存', 
   assert.equal((await tools.execute('query_neighbors', { id: b.id }))[0].id, a.id);
 });
 
-test('非法抽取与未配置模型不留下半份文档或概念', async t => {
+test('未配置模型明确拒绝；无效抽取保住已保存的正文且不生成概念', async t => {
   const { store, tools, page } = await setup(t, { extractionEnabled: true });
   const a = await page('输入校验');
   await assert.rejects(tools.execute('update_doc', { id: a.id, markdown: 'a', revision: 0 }), { code: 'EXTRACTOR_UNCONFIGURED' });
   tools.extractor = { extract: async () => [{ name: 'A', summary: '缺少类型' }] };
-  await assert.rejects(tools.execute('update_doc', { id: a.id, markdown: 'a', revision: 0 }), { code: 'INVALID_INPUT' });
-  assert.equal(await store.document(a.id), '');
+  const result = await tools.execute('update_doc', { id: a.id, markdown: 'a', revision: 0 });
+  assert.equal(result.extraction, 'failed');
+  assert.equal(result.warning.code, 'INVALID_EXTRACTION');
+  assert.equal(result.revision, 1);
+  assert.equal(await store.document(a.id), 'a');
+  assert.equal((await tools.execute('query_neighbors', { id: a.id })).length, 0);
   await assert.rejects(tools.execute('get_node', { id: '../../secret' }), { code: 'INVALID_ID' });
 });
