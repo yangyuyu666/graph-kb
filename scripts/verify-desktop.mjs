@@ -24,6 +24,8 @@ async function connect(target) {
     const message = JSON.parse(data);
     if (message.id) {
       const callback = pending.get(message.id);
+      if (!callback) return;
+      clearTimeout(callback.timer);
       pending.delete(message.id);
       if (message.error)
         callback.reject(new Error(JSON.stringify(message.error)));
@@ -33,7 +35,11 @@ async function connect(target) {
   function send(method, params = {}) {
     return new Promise((resolve, reject) => {
       const key = ++id;
-      pending.set(key, { resolve, reject });
+      const timer = setTimeout(() => {
+        pending.delete(key);
+        reject(new Error(`Native protocol timed out: ${method}`));
+      }, 15000);
+      pending.set(key, { resolve, reject, timer });
       ws.send(JSON.stringify({ id: key, method, params }));
     });
   }
@@ -184,6 +190,43 @@ try {
     ),
     true,
   );
+  const point = await main.evaluate(
+    `(() => { const canvas=document.querySelector('#graph-canvas');const p=canvas._cyreg.cy.nodes()[0].renderedPosition();const r=canvas.getBoundingClientRect();return {x:r.left+p.x,y:r.top+p.y}; })()`,
+  );
+  await main.send("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    button: "right",
+    buttons: 2,
+    clickCount: 1,
+    ...point,
+  });
+  await main.send("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    button: "right",
+    buttons: 0,
+    clickCount: 1,
+    ...point,
+  });
+  await until(() => main.evaluate('!!document.querySelector("[role=menu]")'));
+  assert.equal((await targets()).length, 2);
+  const menuShot = await main.send("Page.captureScreenshot", { format: "png" });
+  await writeFile(
+    "docs/evidence/tauri-node-menu.png",
+    Buffer.from(menuShot.data, "base64"),
+  );
+  await main.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Escape",
+    code: "Escape",
+    windowsVirtualKeyCode: 27,
+  });
+  await main.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Escape",
+    code: "Escape",
+    windowsVirtualKeyCode: 27,
+  });
+  await until(() => main.evaluate('!document.querySelector("[role=menu]")'));
   const graphShot = await main.send("Page.captureScreenshot", {
     format: "png",
   });

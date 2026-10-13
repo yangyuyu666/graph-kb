@@ -139,3 +139,26 @@ test("目录菜单级联删除和恢复，保留共享分支", async ({ page, re
     .click();
   expect((await request.get(`/api/nodes/${b.id}`)).status()).toBe(200);
 });
+
+test("快速保存后离开不误报草稿", async ({ page, request }) => {
+  const { kb, a } = await fixture(request);
+  await enter(page, kb);
+  await page.getByRole("button", { name: a.title, exact: true }).click();
+  const pane = page.locator(".inline-document-pane");
+  await expect(pane.locator(".ProseMirror")).toBeVisible();
+  await pane.locator(".ProseMirror").fill("快速保存正文");
+  await pane
+    .locator("#save")
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await expect(pane.getByRole("status")).toContainText("已保存到本地");
+  // Let Milkdown's deferred markdown listener run after the fast local save.
+  await page.waitForTimeout(400);
+  const dialogs: string[] = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  await page.getByRole("button", { name: /全局搜索/ }).click();
+  await expect(page.getByLabel("全局搜索词")).toBeVisible();
+  expect(dialogs).toEqual([]);
+});

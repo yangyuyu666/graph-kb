@@ -45,7 +45,7 @@ export async function mountDocument(
   checkMounted();
   if (!options.embedded) container.className = "document-app";
   container.innerHTML = `<div class="document"><header><h1 id="title">正在打开…</h1><button id="save" class="primary" disabled>保存</button></header><div class="document-meta"><span id="status" role="status">加载中</span><span id="extraction-state">自动建图：读取中</span></div><div id="editor"></div></div>`;
-  const extractionState = el('#extraction-state');
+  const extractionState = el("#extraction-state");
   const refreshSettings = async () => {
     try {
       const config = await api<CloudConfig>("/api/settings");
@@ -54,7 +54,8 @@ export async function mountDocument(
         ? `自动建图：${config.providers.find((p) => p.id === config.provider)?.name}`
         : "自动建图：关闭";
     } catch {
-      if (!events.signal.aborted) extractionState.textContent = "自动建图：状态不可用";
+      if (!events.signal.aborted)
+        extractionState.textContent = "自动建图：状态不可用";
     }
   };
   await refreshSettings();
@@ -90,8 +91,7 @@ export async function mountDocument(
   }
   await checkLinks(node.markdown);
   checkMounted();
-  let dirty = false,
-    editVersion = 0;
+  let savedMarkdown = node.markdown;
   const crepe = new Crepe({
     root: el("#editor"),
     defaultValue: node.markdown,
@@ -154,10 +154,9 @@ export async function mountDocument(
     ),
   );
   crepe.on((listener) =>
-    listener.markdownUpdated(() => {
-      dirty = true;
-      editVersion++;
-      el("#status").textContent = "有未保存的修改";
+    listener.markdownUpdated((_ctx, markdown) => {
+      if (markdown !== savedMarkdown)
+        el("#status").textContent = "有未保存的修改";
     }),
   );
   await crepe.create();
@@ -184,7 +183,7 @@ export async function mountDocument(
       )
       .catch(() => {});
   });
-  dirty = false;
+  savedMarkdown = crepe.getMarkdown();
   el("#status").textContent = "已读取本地 Markdown";
   const save = el<HTMLButtonElement>("#save");
   save.disabled = false;
@@ -192,7 +191,7 @@ export async function mountDocument(
     if (save.disabled) return;
     save.disabled = true;
     el("#status").textContent = "正在保存；开启自动建图时将等待云端抽取…";
-    const savingVersion = editVersion;
+    const savingMarkdown = crepe.getMarkdown();
     try {
       const result = await api<{
         revision: number;
@@ -200,12 +199,13 @@ export async function mountDocument(
         conceptCount: number;
         warning?: { message: string };
       }>(`/api/nodes/${id}`, "PATCH", {
-        markdown: crepe.getMarkdown(),
+        markdown: savingMarkdown,
         revision,
       });
       revision = result.revision;
       void refreshDocumentLinks();
-      dirty = savingVersion !== editVersion;
+      savedMarkdown = savingMarkdown;
+      const dirty = crepe.getMarkdown() !== savedMarkdown;
       const outcome =
         result.extraction === "failed"
           ? `已保存到本地 · 抽取失败：${result.warning?.message}`
@@ -230,7 +230,7 @@ export async function mountDocument(
     }
   });
   listen("beforeunload", (event) => {
-    if (dirty) {
+    if (crepe.getMarkdown() !== savedMarkdown) {
       event.preventDefault();
       event.returnValue = "";
     }
@@ -238,7 +238,10 @@ export async function mountDocument(
   if (isTauri())
     unlisten = await WebviewWindow.getCurrent().onCloseRequested(
       async (event) => {
-        if (dirty && !window.confirm("文档尚未保存，确定关闭吗？"))
+        if (
+          crepe.getMarkdown() !== savedMarkdown &&
+          !window.confirm("文档尚未保存，确定关闭吗？")
+        )
           event.preventDefault();
       },
     );
@@ -290,7 +293,8 @@ export async function mountDocument(
     id,
     canLeave: () =>
       !save.disabled &&
-      (!dirty || window.confirm("文档尚未保存，确定放弃修改并离开吗？")),
+      (crepe.getMarkdown() === savedMarkdown ||
+        window.confirm("文档尚未保存，确定放弃修改并离开吗？")),
     destroy: async () => {
       events.abort();
       unlisten?.();
