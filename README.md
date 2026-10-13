@@ -93,6 +93,10 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 **连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。应用保持打开；每次应用重启端口/Key 会变，要重新复制。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。连接配置包含本地会话凭据，请勿提交 Git。工具覆盖 CRUD、邻域、路径、全文、导入导出、回收站、概念合并、附件和设置。
 
+**接入本机 Codex：** 将上述完整 JSON 保存到已被 Git 忽略的 `.tools/mcp-connection.json`，在项目目录运行 `node scripts/connect-codex.mjs`。脚本先通过 MCP 初始化、发现工具和只读查询知识库，再用 `codex mcp add` 注册用户级 `graph-kb` 服务；不打印令牌或知识库内容。可追加 `--check` 只验证、不改 Codex 配置，也可传入其他 JSON 路径。Codex CLI 不在 PATH 时，用环境变量 `GRAPH_KB_CODEX_COMMAND` 指定其可执行文件绝对路径。此连接不需要 DeepSeek/GPT 等云端 API Key。
+
+注册后，在 Codex 设置 → MCP servers 中刷新/Restart，并用 `/mcp` 检查连接；尚未加载的当前会话不能视为已接通。应用重启后重新导出 JSON、运行脚本并刷新连接。令牌会写入本机 Codex 用户配置，连接 JSON 也应仅保留在本机。配置机制参考 [Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp)。
+
 **常用操作：** 知识库顶部切换“图谱 / 目录”；目录节点左键在右侧编辑，左右分栏可拖动；图谱和目录均右键打开节点操作菜单（创建子节点、重命名、关系管理、两种删除、新窗口打开），图谱左键仍开独立窗口；图谱控制区选择中心/跳数/路径终点，画布下方导出 PNG 或当前子图；全库导出用顶部“导出”。Markdown ZIP 含结构清单 graph.json，可用 JSON 导入完整还原并重映射 ID；CSV 必须有 title，可选 id、parentId、markdown、kind。所有导入事务整批校验，失败不留半份图。
 
 删除节点可指定 DELETE /api/nodes/{id}?mode=single 或 mode=cascade；默认 single 仅删当前节点，cascade 删除独占后代，保留有外部父节点的共享分支。MCP delete_node 也接受 mode。两种删除均进入回收站，可整批恢复。
