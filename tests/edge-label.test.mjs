@@ -45,20 +45,21 @@ test("边文字：创建/局部更新/清空、结构校验回滚、自动平行
 });
 
 test("标签持久化、JSON 往返/旧格式兼容、回收站恢复，非法标签不产生半份图", async (t) => {
+  const labelText = "参考资料\n第二行详情\n第三行详情";
   const { run, kb, node, reopen } = await setup(t);
   const a = await node("父"), b = await node("子", a.id);
   const edge = (await run("get_graph", { kbId: kb.id })).edges[0];
-  await run("update_edge", { id: edge.id, label: "参考资料" });
+  await run("update_edge", { id: edge.id, label: labelText });
   for (const label of [null, 123, {}, "x".repeat(201)]) {
     await assert.rejects(run("update_edge", { id: edge.id, label }), { code: "INVALID_INPUT" });
     await assert.rejects(run("create_edge", { type: edge.type, source: b.id, target: a.id, label }), { code: "INVALID_INPUT" });
   }
   await assert.rejects(run("update_edge", { id: edge.id, target: b.id, label: "失败" }), { code: "SELF_EDGE" });
-  assert.equal((await run("get_edge", { id: edge.id })).label, "参考资料");
+  assert.equal((await run("get_edge", { id: edge.id })).label, labelText);
   const exported = await run("export_kb", { kbId: kb.id });
   const dest = await run("create_kb", { name: "导入" });
   await run("import_kb", { kbId: dest.id, format: "json", data: exported });
-  assert.equal((await run("get_graph", { kbId: dest.id })).edges[0].label, "参考资料");
+  assert.equal((await run("get_graph", { kbId: dest.id })).edges[0].label, labelText);
   const invalid = structuredClone(exported);
   invalid.edges[0].label = 12;
   await assert.rejects(run("import_kb", { kbId: dest.id, format: "json", data: invalid }), { code: "INVALID_INPUT" });
@@ -71,7 +72,7 @@ test("标签持久化、JSON 往返/旧格式兼容、回收站恢复，非法�
   const batch = await run("delete_node", { id: a.id, mode: "cascade" });
   await run("restore", { id: batch.id });
   await reopen();
-  assert.equal((await run("get_edge", { id: edge.id })).label, "参考资料");
+  assert.equal((await run("get_edge", { id: edge.id })).label, labelText);
   const cleared = await run("update_edge", { id: edge.id, label: "" });
   assert.equal(cleared.id, edge.id);
   assert.equal(cleared.label, "");

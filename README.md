@@ -1,6 +1,6 @@
 # graph-kb
 
-基于知识图谱的本地知识管理应用，当前为 **0.2.0 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
+基于知识图谱的本地知识管理应用，当前为 **0.2.1 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
 
 ## 开发运行
 
@@ -94,7 +94,7 @@ Milkdown → REST / MCP → LibraryStore（知识库定位与跨库查询）
 
 关系 ID 为 TYPE:sourceUUID:targetUUID，放入 URL 时编码。文档保存/重命名携带 revision。错误含 code、message、suggestion；过期保存 409，已删除文档 410。
 
-**边文字（0.1.3）：** 图谱中右键线条 →“编辑边文字”→ 保存，文字会显示在线条旁；目录中也可右键节点 → 管理关系 → 修改。每条边有可选 `label` 属性，最多 200 字符，留空清除；仅为注释，不改变 CHILD_OF / SIBLING_OF 结构语义。旧库启动时自动补充属性，原关系和正文保留。JSON 导入导出、Markdown ZIP 中的 graph.json、回收站恢复均保留标签。
+**图谱与边文字（0.2.1）：** 图谱采用浅色文档卡片和按连接数分层的居中布局，顶部边长滑块及 − / ＋ 可调整间距（100–400），按知识库在当前设备记忆；调整时保留缩放，超出画布可点“适应画布”。 图谱中右键线条 →“编辑边文字”→ 保存，第一行显示在线条旁（过长省略），第二行起仅在点击边弹出的小窗口中显示；编辑框支持换行；目录中也可右键节点 → 管理关系 → 修改。每条边有可选 `label` 属性，最多 200 字符，留空清除；仅为注释，不改变 CHILD_OF / SIBLING_OF 结构语义。旧库启动时自动补充属性，原关系和正文保留。JSON 导入导出、Markdown ZIP 中的 graph.json、回收站恢复均保留标签。
 
 REST 创建边可带 `label`；`PATCH /api/edges/{编码后的关系ID}` 仅传 `{"label":"参考资料"}` 即可修改文字，`{"label":""}` 清除。MCP 同样使用 `update_edge({id,label:"参考资料"})`。修改时省略字段保持原值；重复创建已有边时省略 label 保留原文字。get_graph/get_edge/query_path 返回边的 label。更新 MCP 程序后需让客户端重新加载工具定义，固定连接 JSON 无需改动。
 

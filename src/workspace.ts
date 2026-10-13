@@ -32,6 +32,12 @@ export async function renderWorkspace(
     selected: string | undefined,
     cy: Core | undefined;
   const collapsed = new Set<string>();
+  const edgeLengthKey = `graph-kb:edge-length:${kb.id}`;
+  let edgeLength = 220;
+  try {
+    const saved = Number(localStorage.getItem(edgeLengthKey));
+    if (Number.isFinite(saved) && saved >= 100 && saved <= 400) edgeLength = saved;
+  } catch { /* Layout preferences must not block the graph. */ }
   const documentPane = e("div", undefined, "inline-document-pane");
   documentPane.append(
     e("h2", "选择一个节点"),
@@ -149,6 +155,7 @@ export async function renderWorkspace(
     return graph.nodes.find((n) => n.id === selected);
   }
   function render() {
+    shell.classList.toggle("graph-theme", view === "graph");
     closeContextMenu();
     cy?.destroy();
     cy = undefined;
@@ -427,7 +434,7 @@ export async function renderWorkspace(
               : "子节点") +
             " · " +
             other?.title +
-            (edge.label ? " · " + edge.label : ""),
+            (edge.label ? " · " + edge.label.split(/\r\n|\r|\n/)[0] : ""),
         ),
         button("修改", () => {
           m.dialog.close();
@@ -487,6 +494,24 @@ export async function renderWorkspace(
     };
     m.show();
   }
+  async function showEdgeDetails(id: string) {
+    const edge = await api<GraphEdge>("/api/edges/" + encodeURIComponent(id));
+    if (disposed || view !== "graph" || document.querySelector("dialog[open]")) return;
+    const m = modal("边文字");
+    m.dialog.classList.add("edge-detail-dialog");
+    m.submit.remove();
+    m.actions.querySelector("button")!.textContent = "关闭";
+    const title = (nodeId: string) => graph.nodes.find((node) => node.id === nodeId)?.title ?? nodeId;
+    m.form.append(
+      e("p", `${title(edge.source)} ${edge.type === "CHILD_OF" ? "→" : "↔"} ${title(edge.target)}`, "edge-detail-endpoints"),
+      e("div", edge.label || "这条边还没有文字。", "edge-detail-content"),
+    );
+    m.actions.append(button("编辑边文字", () => {
+      m.dialog.close();
+      edgeDialog(edge.source, edge, true);
+    }, "primary"));
+    m.show();
+  }
   function edgeDialog(source: string, existing?: GraphEdge, labelOnly = false) {
     const m = modal(labelOnly ? "编辑边文字" : existing ? "修改关系" : "添加关系");
     const from = e("select"),
@@ -509,11 +534,13 @@ export async function renderWorkspace(
       field(m.form, "起点（子节点）", from);
       field(m.form, "终点（父节点）", to);
     }
-    const label = e("input");
+    const label = e("textarea");
     label.maxLength = 200;
+    label.rows = 5;
     label.value = existing?.label ?? "";
-    label.placeholder = "例如：参考资料；留空可清除";
+    label.placeholder = "第一行：简短标题\n第二行开始：详细说明；留空可清除";
     field(m.form, "边文字（可选）", label);
+    m.form.append(e("p", "最多 200 字符。画布只显示第一行，过长时省略；点击边查看完整文字。", "hint"));
     m.submit.textContent = "保存";
     m.form.onsubmit = async (event) => {
       event.preventDefault();
@@ -589,74 +616,158 @@ export async function renderWorkspace(
     canvas.setAttribute("aria-label", "知识图谱画布");
     const legend = e(
       "div",
-      "实线箭头：从属（子 → 父）　虚线：平行　右键边可编辑文字",
+      "实线箭头：从属（子 → 父）　虚线：平行　点击边查看完整文字 · 右键编辑",
       "graph-legend",
     );
     const buttons = e("div", undefined, "graph-actions");
+    const lengthControl = e("div", undefined, "edge-length-control");
+    const lengthSlider = e("input");
+    lengthSlider.type = "range";
+    lengthSlider.min = "100";
+    lengthSlider.max = "400";
+    lengthSlider.step = "20";
+    lengthSlider.value = String(edgeLength);
+    lengthSlider.setAttribute("aria-label", "边长");
+    const lengthValue = e("output", String(edgeLength));
+    const shorter = button("−", () => setLength(edgeLength - 20));
+    const longer = button("＋", () => setLength(edgeLength + 20));
+    shorter.setAttribute("aria-label", "缩短边长");
+    longer.setAttribute("aria-label", "增加边长");
+    lengthControl.append(e("span", "边长"), shorter, lengthSlider, longer, lengthValue);
+    function setLength(value: number) {
+      edgeLength = Math.max(100, Math.min(400, value));
+      lengthSlider.value = String(edgeLength);
+      lengthValue.value = String(edgeLength);
+      shorter.disabled = edgeLength === 100;
+      longer.disabled = edgeLength === 400;
+      try { localStorage.setItem(edgeLengthKey, String(edgeLength)); } catch { /* Optional preference. */ }
+      arrange(false);
+    }
+    lengthSlider.oninput = () => setLength(Number(lengthSlider.value));
+    shorter.disabled = edgeLength === 100;
+    longer.disabled = edgeLength === 400;
+    function fitGraph() {
+      if (!cy?.nodes().length) return;
+      cy.fit(undefined, 50);
+      cy.zoom(Math.min(cy.zoom(), 1));
+      cy.center();
+    }
+    let layoutPositions: { id: string; x: number; y: number }[] = [];
+    let minimumDistance = 1;
+    function arrange(fit: boolean) {
+      if (!cy) return;
+      if (fit) {
+        cy.layout({
+          name: "concentric", animate: false, fit: false,
+          concentric: (node) => node.degree(), levelWidth: () => 1,
+          minNodeSpacing: 60, avoidOverlap: true, equidistant: true,
+          startAngle: -Math.PI * 5 / 6,
+        }).run();
+        const capture = () => {
+          layoutPositions = cy!.nodes().map((n) => ({ id: n.id(), ...n.position() }));
+          minimumDistance = Infinity;
+          for (let i = 0; i < layoutPositions.length; i++) {
+            for (let j = i + 1; j < layoutPositions.length; j++) {
+              const a = layoutPositions[i], b = layoutPositions[j];
+              minimumDistance = Math.min(minimumDistance, Math.hypot(a.x - b.x, a.y - b.y));
+            }
+          }
+        };
+        capture();
+        if (minimumDistance < 1) {
+          cy.layout({ name: "grid", fit: false, avoidOverlap: true }).run();
+          capture();
+        }
+      }
+      // Scale a stable layout rather than rearranging the graph for every slider tick.
+      // Include the card diagonal so the minimum setting still leaves visible space between cards.
+      const scale = Number.isFinite(minimumDistance) ? (edgeLength + 180) / minimumDistance : 1;
+      cy.batch(() => {
+        for (const pos of layoutPositions) cy!.getElementById(pos.id).position({ x: pos.x * scale, y: pos.y * scale });
+      });
+      if (fit) fitGraph();
+      else cy.center();
+    }
     buttons.append(
+      lengthControl,
       button("放大", () => cy?.zoom(cy.zoom() * 1.25)),
       button("缩小", () => cy?.zoom(cy.zoom() / 1.25)),
-      button("适应画布", () => cy?.fit(undefined, 60)),
+      button("适应画布", fitGraph),
       button("导出 PNG", () => {
         if (cy) {
           const anchor = e("a");
-          anchor.href = cy.png({ full: true, bg: "#fafafd", scale: 2 });
+          anchor.href = cy.png({ full: true, bg: "#f7f9fa", scale: 2 });
           anchor.download = `${kb.name}-图谱.png`;
           anchor.click();
         }
       }),
       button("导出当前子图", () => exportGraph(cy?.nodes().map((n) => n.id()))),
     );
-    panel.append(controls, legend, buttons, canvas);
+    panel.append(buttons, controls, legend, canvas);
     function draw(data: GraphData) {
       cy?.destroy();
+      const icon = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#657a87" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h8"/></svg>');
       cy = cytoscape({
         container: canvas,
         elements: [
           ...data.nodes.map((n) => ({
             data: { id: n.id, label: n.title, kind: n.kind },
+            selected: n.id === selected,
           })),
-          ...data.edges.map((edge) => ({ data: edge })),
+          ...data.edges.map((edge) => ({ data: { ...edge, displayLabel: edge.label.split(/\r\n|\r|\n/)[0] } })),
         ],
         style: [
           {
             selector: "node",
             style: {
               label: "data(label)",
-              "background-color": "#6b59e8",
-              color: "#323042",
-              "font-size": 12,
-              "text-valign": "bottom",
-              "text-margin-y": 10,
-              "text-wrap": "wrap",
-              "text-max-width": "125px",
-              width: 38,
-              height: 38,
+              shape: "round-rectangle",
+              "background-color": "#ffffff",
+              "border-width": 1.2,
+              "border-color": "#c5d1d9",
+              "background-image": icon,
+              "background-width": 22,
+              "background-height": 22,
+              "background-position-x": "12px",
+              color: "#263c49",
+              "font-size": 14,
+              "font-family": '"Microsoft YaHei", sans-serif',
+              "text-valign": "center",
+              "text-margin-x": 15,
+              "text-wrap": "ellipsis",
+              "text-max-width": "112px",
+              width: 168,
+              height: 54,
             },
           },
           {
             selector: "edge",
             style: {
-              label: "data(label)",
+              label: "data(displayLabel)",
               "font-size": 12,
-              color: "#514775",
-              "text-wrap": "wrap",
+              color: "#465e6b",
+              "text-wrap": "ellipsis",
               "text-max-width": "160px",
-              "text-background-color": "#fafafd",
-              "text-background-opacity": 0.9,
-              "text-background-padding": "3px",
+              "text-background-color": "#ffffff",
+              "text-background-opacity": 1,
+              "text-background-shape": "roundrectangle",
+              "text-background-padding": "5px",
+              "text-border-width": 1,
+              "text-border-opacity": 1,
+              "text-border-color": "#e1e8ec",
               "text-events": "yes",
-              "text-margin-y": -10,
-              width: 1.5,
-              "line-color": "#b1a9da",
-              "curve-style": "bezier",
+              width: 1.6,
+              "line-color": "#8c9fa9",
+              "curve-style": "unbundled-bezier",
+              "control-point-distances": [24],
+              "control-point-weights": [0.5],
             },
           },
           {
             selector: 'edge[type="CHILD_OF"]',
             style: {
               "target-arrow-shape": "triangle",
-              "target-arrow-color": "#8577bc",
+              "target-arrow-color": "#8c9fa9",
             },
           },
           {
@@ -664,19 +775,29 @@ export async function renderWorkspace(
             style: { "line-style": "dashed" },
           },
           {
-            selector: ":selected",
-            style: { "border-width": 3, "border-color": "#211463" },
+            selector: "node:selected",
+            style: { "border-width": 2, "border-color": "#168c87", "background-color": "#e5f5f2", color: "#155d5b" },
           },
+          { selector: "edge:selected", style: { "line-color": "#168c87", "target-arrow-color": "#168c87" } },
         ],
-        layout: {
-          name: "cose",
-          animate: false,
-          padding: 65,
-          nodeRepulsion: () => 14000,
-          idealEdgeLength: () => 110,
-        },
+        layout: { name: "grid" },
         minZoom: 0.15,
         maxZoom: 3,
+      });
+      const readableLabels = () => {
+        if (!cy) return;
+        cy.style()
+          .selector("node").style("font-size", Math.min(28, Math.max(14, 12 / cy.zoom())))
+          .selector("edge").style("font-size", Math.min(24, Math.max(12, 11 / cy.zoom())))
+          .update();
+      };
+      cy.on("zoom", readableLabels);
+      arrange(true);
+      readableLabels();
+      cy.on("tap", "edge", (event) => {
+        closeContextMenu();
+        const edge = event.target.data() as GraphEdge;
+        void showEdgeDetails(edge.id).catch(notify);
       });
       cy.on("tap", "node", (event) => {
         selected = event.target.id();

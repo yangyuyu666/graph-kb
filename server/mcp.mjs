@@ -183,7 +183,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.2.0" },
+      serverInfo: { name: "graph-kb", version: "0.2.1" },
       instructions,
     });
   }

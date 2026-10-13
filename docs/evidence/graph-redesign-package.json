@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-13",
+  "version": "0.2.1",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.1_x64-setup.exe",
+  "bytes": 30432021,
+  "sha256": "ac0fa6e3960157296d7301479bd1efb11b50a76c35c893f0bba893101f1a95b6",
+  "platform": "windows-x64",
+  "signed": false,
+  "buildExitCode": 0,
+  "deployment": "Pending user save-and-close confirmation; original installed application remains running",
+  "tests": {
+    "backend": 47,
+    "ui": 14,
+    "uiNote": "13 passed on full run; status locator ambiguity repaired and all 3 workspace tests passed on rerun",
+    "standaloneRuntime": 1,
+    "native": "Release executable with bundled runtime; isolated graph and WebView data, empty PATH, multiline edge edit/read and trash restoration, clean exit"
+  },
+  "screenshots": [
+    "graph-redesign.png",
+    "edge-details.png",
+    "tauri-graph.png"
+  ],
+  "dataSchemaChanged": false,
+  "mcpConfigurationChanged": false
+}

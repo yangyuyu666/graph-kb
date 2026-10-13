@@ -53,7 +53,7 @@ test("目录子节点创建、折叠、图谱切换、路径与子图导出", as
   await page.getByLabel("邻域中心", { exact: true }).selectOption(root.id);
   await page.getByLabel("路径终点").selectOption(child.id);
   await page.getByRole("button", { name: "查找路径" }).click();
-  await expect(page.getByRole("status")).toContainText("路径包含 1 条关系");
+  await expect(page.locator("#status")).toContainText("路径包含 1 条关系");
   await page.screenshot({ path: "docs/evidence/mvp-graph.png" });
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出当前子图" }).click();

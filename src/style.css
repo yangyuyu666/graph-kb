@@ -609,6 +609,7 @@ input {
   margin: 18px 0;
 }
 .app-dialog label input,
+.app-dialog label textarea,
 .app-dialog label select {
   width: 100%;
   margin-top: 4px;
@@ -623,7 +624,7 @@ input {
 }
 .graph-layout {
   position: relative;
-  background: #fcfbff;
+  background: #f7f9fa;
   min-height: 520px;
 }
 .graph-controls {
@@ -643,19 +644,66 @@ input {
 }
 .graph-canvas {
   width: 100%;
-  height: 480px;
+  height: clamp(440px, 60vh, 760px);
+  background-image: radial-gradient(#d9e3e9 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
 }
 .graph-legend {
   font-size: 11px;
-  color: #98919e;
+  color: #718593;
   padding: 10px 16px;
 }
 .graph-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
   padding: 12px;
   background: #fff;
   border-top: 1px solid #eee9f3;
+}
+.graph-theme .workspace-panel { border-color: #dbe5e9; }
+.graph-theme .view-tabs button[aria-selected="true"] {
+  background: #e5f3f1;
+  color: #176d69;
+}
+.graph-theme .primary { background: #168c87; border-color: #168c87; }
+.graph-theme #status { color: #718593; }
+.graph-theme button:hover { background: #edf5f4; color: #176d69; }
+.graph-theme .graph-controls { border-color: #e3eaed; background: #fff; }
+.edge-length-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #dbe5e9;
+  border-radius: 8px;
+  padding: 4px 10px;
+  color: #465e6b;
+  margin-right: auto;
+}
+.edge-length-control input { width: 110px; padding: 0; accent-color: #168c87; }
+.edge-length-control button { border: 0; padding: 3px 6px; font-size: 18px; }
+.edge-length-control output { min-width: 3ch; font-variant-numeric: tabular-nums; font-size: 12px; }
+.app-dialog label textarea {
+  font: inherit;
+  padding: 12px;
+  border: 1px solid #ccd7de;
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.7;
+}
+.edge-detail-dialog { width: min(440px, calc(100vw - 40px)); }
+.edge-detail-endpoints { color: #718593; overflow-wrap: anywhere; }
+.edge-detail-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 45vh;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f7f9fa;
+  line-height: 1.8;
 }
 .graph-actions button {
   font-size: 12px;

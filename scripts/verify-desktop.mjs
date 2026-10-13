@@ -237,15 +237,21 @@ try {
     });
   await until(() => main.evaluate('!!document.querySelector("[role=menuitem][aria-label=编辑边文字]")'));
   await main.evaluate('document.querySelector("[role=menuitem][aria-label=编辑边文字]").click()');
-  await until(() => main.evaluate('!!document.querySelector("dialog input")'));
-  await main.evaluate(`document.querySelector('dialog input').value='原生边文字'; document.querySelector('dialog form').requestSubmit()`);
+  await until(() => main.evaluate('!!document.querySelector("dialog textarea")'));
+  await main.evaluate(`document.querySelector('dialog textarea').value='原生边文字\\n原生详情第二行'; document.querySelector('dialog form').requestSubmit()`);
   await until(() => main.evaluate('!document.querySelector("dialog")'));
   assert.equal(
     await main.evaluate(`document.querySelector('#graph-canvas')._cyreg.cy.edges()[0].style('label')`),
     "原生边文字",
   );
   const labeledGraph = await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`);
-  assert.equal(labeledGraph.edges[0].label, "原生边文字");
+  assert.equal(labeledGraph.edges[0].label, "原生边文字\n原生详情第二行");
+  const detailPoint = await main.evaluate(`(() => { const canvas=document.querySelector('#graph-canvas'); const p=canvas._cyreg.cy.edges()[0].renderedMidpoint(); const r=canvas.getBoundingClientRect(); return {x:r.left+p.x,y:r.top+p.y}; })()`);
+  for (const type of ["mousePressed", "mouseReleased"])
+    await main.send("Input.dispatchMouseEvent", { type, button: "left", buttons: type === "mousePressed" ? 1 : 0, clickCount: 1, ...detailPoint });
+  await until(() => main.evaluate('!!document.querySelector(".edge-detail-content")'));
+  assert.equal(await main.evaluate('document.querySelector(".edge-detail-content").textContent'), "原生边文字\n原生详情第二行");
+  await main.evaluate('document.querySelector("dialog").close()');
   const graphShot = await main.send("Page.captureScreenshot", {
     format: "png",
   });
@@ -263,7 +269,7 @@ try {
   );
   assert.equal(
     (await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`)).edges[0].label,
-    "原生边文字",
+    "原生边文字\n原生详情第二行",
   );
   assert.equal(
     (await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph')`)).nodes
