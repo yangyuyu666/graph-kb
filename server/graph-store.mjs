@@ -1,0 +1,94 @@
+import kuzu from 'kuzu';
+import { mkdir, readFile, writeFile, rename, readdir, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+// Kùzu is embedded in this local process. No database daemon or JSON graph mirror.
+export class GraphStore {
+  constructor(root) { this.root = root; this.queue = Promise.resolve(); }
+  async open() {
+    await mkdir(join(this.root, 'documents'), { recursive: true });
+    await mkdir(join(this.root, 'journal'), { recursive: true });
+    this.db = new kuzu.Database(join(this.root, 'graph.kuzu'), 256 * 1024 * 1024);
+    this.conn = new kuzu.Connection(this.db);
+    for (const ddl of [
+      'CREATE NODE TABLE IF NOT EXISTS KnowledgeBase(id STRING, name STRING, PRIMARY KEY(id))',
+      'CREATE NODE TABLE IF NOT EXISTS Node(id STRING, kbId STRING, kind STRING, title STRING, conceptKey STRING, updatedAt STRING, revision INT64, PRIMARY KEY(id))',
+      'CREATE REL TABLE IF NOT EXISTS CHILD_OF(FROM Node TO Node)',
+      'CREATE REL TABLE IF NOT EXISTS SIBLING_OF(FROM Node TO Node)',
+      'CREATE NODE TABLE IF NOT EXISTS FileCommit(id STRING, PRIMARY KEY(id))',
+    ]) await this.query(ddl);
+    await this.recover();
+    return this;
+  }
+  run(fn) {
+    const result = this.queue.then(() => {
+      if (this.unhealthy) throw new Error('文件提交未完成，请重启本地服务以恢复');
+      return fn();
+    });
+    this.queue = result.catch(() => {});
+    return result;
+  }
+  async query(cypher, params) {
+    let result;
+    if (params) {
+      const statement = await this.conn.prepare(cypher);
+      if (!statement.isSuccess()) throw new Error(statement.getErrorMessage());
+      result = await this.conn.execute(statement, params);
+    } else result = await this.conn.query(cypher);
+    try { return await result.getAll(); } finally { result.close(); }
+  }
+  async node(id) {
+    const rows = await this.query('MATCH (n:Node {id: $id}) RETURN n.id AS id, n.kbId AS kbId, n.kind AS kind, n.title AS title, n.updatedAt AS updatedAt, n.revision AS revision', { id });
+    return rows[0] ? { ...rows[0], revision: Number(rows[0].revision) } : null;
+  }
+  async document(id) { return readFile(join(this.root, 'documents', `${id}.md`), 'utf8'); }
+  async promote(id, manifest) {
+    for (const docId of manifest.ids) {
+      const staged = join(this.root, 'journal', id, `${docId}.md`);
+      try { await rename(staged, join(this.root, 'documents', `${docId}.md`)); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    await rm(join(this.root, 'journal', id), { recursive: true, force: true });
+    await this.query('MATCH (c:FileCommit {id: $id}) DELETE c', { id });
+  }
+  async recover() {
+    for (const id of await readdir(join(this.root, 'journal'))) {
+      if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('Invalid journal directory');
+      const committed = await this.query('MATCH (c:FileCommit {id: $id}) RETURN c.id', { id });
+      if (committed.length) {
+        const manifest = JSON.parse(await readFile(join(this.root, 'journal', id, 'manifest.json'), 'utf8'));
+        await this.promote(id, manifest);
+      } else await rm(join(this.root, 'journal', id), { recursive: true, force: true });
+    }
+    // A crash after journal cleanup but before marker cleanup is harmless.
+    await this.query('MATCH (c:FileCommit) DELETE c');
+  }
+  async transaction(documents, change) {
+    const id = randomUUID();
+    const folder = join(this.root, 'journal', id);
+    const manifest = { ids: documents.map(d => d.id) };
+    await mkdir(folder);
+    for (const doc of documents) await writeFile(join(folder, `${doc.id}.md`), doc.markdown, 'utf8');
+    await writeFile(join(folder, 'manifest.json'), JSON.stringify(manifest));
+    await this.query('BEGIN TRANSACTION');
+    let committed = false;
+    try {
+      const result = await change();
+      await this.query('CREATE (:FileCommit {id: $id})', { id });
+      await this.query('COMMIT');
+      committed = true;
+      await this.promote(id, manifest);
+      return result;
+    } catch (error) {
+      if (committed) this.unhealthy = true;
+      else {
+        // Kùzu may already abort a transaction when a statement fails.
+        try { await this.query('ROLLBACK'); } catch { /* preserve original error */ }
+        await rm(folder, { recursive: true, force: true });
+      }
+      throw error;
+    }
+  }
+  async close() { await this.queue; await this.conn.close(); await this.db.close(); }
+}
