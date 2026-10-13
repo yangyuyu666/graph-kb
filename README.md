@@ -68,6 +68,8 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 ## REST 与 MCP
 
+完整中文说明见 [应用与 MCP 使用指南](server/mcp-guide.md)，包含界面操作、图模型、编辑/删除恢复流程、导入导出示例和错误处理。MCP 初始化会返回核心 `instructions`；客户端可以调用 `get_usage_guide` 或读取资源 `graph-kb://guide/usage` 获得同一份手册。`tools/list` 包含各工具用途、参数含义与关键返回行为。
+
 | 方法 | 路径 | 用途 |
 |---|---|---|
 | GET / POST | /api/kbs | 列出 / 创建知识库 |

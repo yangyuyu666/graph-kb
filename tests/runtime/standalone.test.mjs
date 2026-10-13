@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { cp, mkdtemp, rm } from 'node:fs/promises';
@@ -18,6 +19,23 @@ test('复制出仓库的运行时在空 PATH 下加载 Kùzu、写入、重启�
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (['path', 'node_path', 'node_options'].includes(key.toLowerCase())) delete env[key];
   env.PATH = '';
+  // The packaged guide must work outside the repository with no PATH lookup.
+  const messages = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'runtime-test', version: '1' } } },
+    { jsonrpc: '2.0', method: 'notifications/initialized' },
+    { jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'graph-kb://guide/usage' } },
+    { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'get_usage_guide', arguments: {} } },
+  ];
+  const run = promisify(execFile);
+  const probe = run(join(runtime, 'node.exe'), [join(runtime, 'server/mcp.mjs')], {
+    cwd: root, env: { ...env, GRAPH_KB_API_URL: 'http://127.0.0.1:1', GRAPH_KB_API_TOKEN: 'runtime-guide-fixture' }, windowsHide: true, timeout: 10000,
+  });
+  probe.child.stdin.end(messages.map((message) => JSON.stringify(message)).join('\n') + '\n');
+  const replies = (await probe).stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
+  assert.match(replies.find((r) => r.id === 1).result.instructions, /get_usage_guide/);
+  const resource = replies.find((r) => r.id === 2).result.contents[0].text;
+  assert.match(resource, /Graph KB 使用指南/);
+  assert.equal(replies.find((r) => r.id === 3).result.content[0].text, resource);
   async function start() {
     const child = spawn(join(runtime, 'node.exe'), [join(runtime, 'server/desktop.mjs'), join(root, 'data')], { cwd: root, env, windowsHide: true });
     children.push(child);

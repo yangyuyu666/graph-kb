@@ -10,6 +10,7 @@ await writeFile(join(destination, 'package.json'), JSON.stringify({ private: tru
 for (const name of await readdir('server')) {
   if (name.endsWith('.mjs')) await copyFile(join('server', name), join(destination, 'server', name));
 }
+await copyFile('server/mcp-guide.md', join(destination, 'server/mcp-guide.md'));
 for (const name of ['index.js', 'index.mjs', 'connection.js', 'database.js', 'prepared_statement.js', 'query_result.js', 'kuzu_native.js', 'kuzujs.node', 'LICENSE', 'package.json'])
   await copyFile(join('node_modules/kuzu', name), join(destination, 'node_modules/kuzu', name));
 await copyFile('LICENSE', join(destination, 'LICENSE'));

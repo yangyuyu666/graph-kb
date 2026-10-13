@@ -1,6 +1,7 @@
 // MCP 2025-11-25 stdio bridge: one JSON-RPC message per line, stdout is protocol-only.
 // The desktop process owns Kùzu; this bridge calls exactly the same tool boundary.
 import { createInterface } from "node:readline";
+import { describeTool, instructions, guideUri, guideText } from "./mcp-help.mjs";
 const url = process.env.GRAPH_KB_API_URL,
   token = process.env.GRAPH_KB_API_TOKEN;
 if (!url || !/^http:\/\/127\.0\.0\.1:\d+$/.test(url) || !token) {
@@ -18,6 +19,7 @@ const string = { type: "string" },
     additionalProperties: false,
   });
 const definitions = [
+  ["get_usage_guide", "读取应用使用指南", {}, []],
   ["get_kb", "读取知识库与统计", { id }, ["id"]],
   ["get_edge", "读取指定关系", { id }, ["id"]],
   [
@@ -151,11 +153,17 @@ const definitions = [
     [],
   ],
 ];
-const tools = definitions.map(([name, description, properties, required]) => ({
-  name,
-  description,
-  inputSchema: object(properties, required),
-}));
+const tools = definitions.map(([name, , properties, required]) => {
+  const help = describeTool(name, properties);
+  return { name, description: help.description, inputSchema: object(help.properties, required) };
+});
+const guideResource = {
+  uri: guideUri,
+  name: "graph-kb-usage-guide",
+  title: "Graph KB 应用与 MCP 使用指南",
+  description: "产品模型、界面使用、工具流程、参数示例、版本冲突、删除恢复及云端抽取说明。",
+  mimeType: "text/markdown",
+};
 let initialized = false;
 async function handle(message) {
   if (message.jsonrpc !== "2.0" || typeof message.method !== "string")
@@ -170,8 +178,9 @@ async function handle(message) {
     initialized = true;
     return result({
       protocolVersion: "2025-11-25",
-      capabilities: { tools: { listChanged: false } },
+      capabilities: { tools: { listChanged: false }, resources: {} },
       serverInfo: { name: "graph-kb", version: "0.1.1" },
+      instructions,
     });
   }
   if (!initialized)
@@ -181,6 +190,15 @@ async function handle(message) {
       error: { code: -32000, message: "Initialize first" },
     };
   if (message.method === "ping") return result({});
+  if (message.method === "resources/list") return result({ resources: [guideResource] });
+  if (message.method === "resources/templates/list") return result({ resourceTemplates: [] });
+  if (message.method === "resources/read") {
+    if (message.params?.uri !== guideUri) return {
+      jsonrpc: "2.0", id: message.id,
+      error: { code: -32002, message: "Resource not found" },
+    };
+    return result({ contents: [{ uri: guideUri, mimeType: "text/markdown", text: guideText }] });
+  }
   if (message.method === "tools/list") return result({ tools });
   if (message.method === "tools/call") {
     const tool = tools.find((t) => t.name === message.params?.name);
@@ -190,6 +208,7 @@ async function handle(message) {
         id: message.id,
         error: { code: -32602, message: "Unknown tool" },
       };
+    if (tool.name === "get_usage_guide") return result({ content: [{ type: "text", text: guideText }], isError: false });
     try {
       const response = await fetch(url + "/api/tools", {
         method: "POST",

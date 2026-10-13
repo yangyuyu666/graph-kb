@@ -46,6 +46,9 @@ try {
     { jsonrpc: "2.0", method: "notifications/initialized" },
     { jsonrpc: "2.0", id: 2, method: "tools/list" },
     { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "list_kbs", arguments: {} } },
+    { jsonrpc: "2.0", id: 4, method: "resources/list" },
+    { jsonrpc: "2.0", id: 5, method: "resources/read", params: { uri: "graph-kb://guide/usage" } },
+    { jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "get_usage_guide", arguments: {} } },
   ];
   const stdout = await run(server.command, server.args, { env: { ...process.env, ...env } },
     messages.map((message) => JSON.stringify(message)).join("\n") + "\n");
@@ -57,6 +60,16 @@ try {
       !catalog?.some((tool) => tool.name === "list_kbs") || !listing || listing.isError ||
       !Array.isArray(JSON.parse(listing.content[0].text))) throw new Error("Probe failed");
   console.log(`MCP 初始化、${catalog.length} 项工具发现、知识库只读查询通过。`);
+  stage = "MCP 使用指南验证失败：请先更新本地 MCP 服务文件，再重新连接";
+  const resources = replies.find((reply) => reply.id === 4)?.result?.resources;
+  const guide = replies.find((reply) => reply.id === 5)?.result?.contents?.[0]?.text;
+  const guideTool = replies.find((reply) => reply.id === 6)?.result;
+  if (!initialized.instructions?.includes("get_usage_guide") ||
+      !resources?.some((resource) => resource.uri === "graph-kb://guide/usage") ||
+      !guide?.includes("Graph KB 使用指南") || guideTool?.isError || guideTool?.content?.[0]?.text !== guide) {
+    throw new Error("Guide probe failed");
+  }
+  console.log("初始化说明、使用指南资源和 get_usage_guide 读取通过。");
   if (!args.includes("--check")) {
     stage = "Codex 注册失败：请确认 codex 命令可用，且用户配置可写";
     const cli = process.env.GRAPH_KB_CODEX_COMMAND ?? (process.platform === "win32" ? "codex.exe" : "codex");

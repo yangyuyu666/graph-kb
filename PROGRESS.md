@@ -55,7 +55,7 @@ Windows x64；Node 24.19.0、Kùzu 0.11.3、Milkdown 7.22.3、Cytoscape.js 3.34.
 
 | 检查 | 结果 |
 |---|---|
-| 后端测试 | 31 项通过：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、CSV/Markdown/JSON 原子导入、附件、缓存/合并、真实 MCP 子进程 |
+| 后端测试 | 34 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、CSV/Markdown/JSON 原子导入、附件、缓存/合并、真实 MCP 子进程、使用指南读取和操作流程 |
 | Edge 界面测试 | 9 项全通过，另 1 项快速保存回归通过（共 10 项）；新增内联编辑、可拖分栏、草稿保护、图谱右键/左键行为、级联删除共享分支保护 |
 | 独立运行时 | 1 项通过，复制出仓库、空 PATH、实际保存和重启回读 |
 | TypeScript / Vite | 构建通过；主 bundle 约 1.97 MB、gzip 624 KB，存在体积提示 |
@@ -78,7 +78,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.1.1_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.1_x64-setup.exe)，大小见构建记录；校验值见 [windows-package.json](docs/evidence/windows-package.json)。安装后全部服务文件与源码哈希一致；主程序与 release 仅有预期的 NSIS 标记 3 字节差异。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端与许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.1.1_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.1_x64-setup.exe)，大小见构建记录；校验值见 [windows-package.json](docs/evidence/windows-package.json)。该文件记录安装时的验收结果；主程序与 release 仅有预期的 NSIS 标记 3 字节差异。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端与许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。后续 MCP 说明更新已单独同步到本机安装目录，见下文；已有安装包未重新生成，仍为更新前版本。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 
@@ -96,6 +96,15 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 已安装服务文件和主程序再次校验一致；原生鼠标右键图节点、菜单关闭且不多开窗口也已验证。修复 Milkdown 延迟通知导致的快速保存后误报草稿，保存状态改为比较实际 Markdown 内容。
 
 2026-10-13：新增 Codex 接入脚本与 README 操作步骤。`node --test tests/mcp.test.mjs` 通过 2 项（含子测试）：真实隔离 Kùzu/MCP 读写，以及接入脚本的只读检查、失效令牌拒绝、输出脱敏。用户保存连接配置后，运行脚本成功完成本机真实应用的 MCP 初始化、31 项工具发现和 `list_kbs` 只读调用，再注册 Codex 用户级 `graph-kb` 服务；CLI 确认 enabled=true。未修改知识库数据，令牌未打印或提交。当前对话工具列表尚无 graph-kb，客户端刷新后的对话内调用仍待验收。无需重新构建桌面安装包。
+
+## MCP 使用说明补全（2026-10-13）
+
+- `server/mcp-guide.md` 是唯一完整手册来源，README 链接到它。覆盖目录/图谱界面用法、稳定 ID、多父图结构、子→父方向、全文替换与版本冲突、共享分支保护、批次恢复、云端抽取状态及隐私、导入导出和附件示例。
+- 初始化返回核心 `instructions`；`tools/list` 为全部工具及参数提供中文说明；新增 `get_usage_guide`，共 32 项工具。资源 `graph-kb://guide/usage` 与帮助工具返回同一内容，不需要 AI 另找本地 README。资源只接受固定 URI，不提供任意文件读取。
+- 打包脚本收集手册及说明模块。`node --test --test-concurrency=1 tests/*.test.mjs`：34 项通过；`node --test tests/runtime/standalone.test.mjs`：1 项通过，含复制出仓库、空 PATH 下读取手册，以及原有图库保存/重启回读。
+- MCP 流程测试覆盖版本冲突不覆盖正文、原子改父关系、级联删除共享分支保护及批次恢复。指南资源、帮助工具内容一致；未知 URI 拒绝；参数说明可通过工具发现取得。
+- 已备份旧 MCP 入口，并将 `mcp.mjs`、`mcp-help.mjs`、`mcp-guide.md` 同步到当前 Codex 配置指向的 `.tools/installed-smoke/resources/runtime/server/`，逐文件校验哈希。未重启用户桌面应用，未改用户数据。`node scripts/connect-codex.mjs --check` 对真实会话验证通过：32 项工具、知识库只读查询、初始化说明、指南资源和帮助工具均正常。
+- 已运行的客户端 MCP 子进程仍需在 MCP 设置中 Restart 后加载更新；本次验证使用新启动的真实 MCP 子进程，不冒充当前对话已加载。旧 NSIS 安装包未重打，重装旧包会覆盖本次本机 MCP 文件更新；新版打包流程已包含这些文件。
 
 ## Git 与运行
 
