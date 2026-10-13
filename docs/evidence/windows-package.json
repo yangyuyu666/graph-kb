@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-13",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.0.1_x64-setup.exe",
+  "bytes": 30247509,
+  "sha256": "73989fa7205bfba9ff662f1fc451f4868490ec548db0b5805acba1c2b9798158",
+  "platform": "windows-x64",
+  "signed": false,
+  "installerExitCode": 0,
+  "installedAt": ".tools/installed-smoke",
+  "nativeVerification": [
+    "debug",
+    "release with empty PATH and outside working directory",
+    "installed release with empty PATH and outside working directory"
+  ],
+  "cloudProviderLiveTest": "not run: no user API key or model configured"
+}
