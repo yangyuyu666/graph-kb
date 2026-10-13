@@ -1,6 +1,6 @@
 # graph-kb
 
-基于知识图谱的本地知识管理应用，当前为 **0.1.1 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
+基于知识图谱的本地知识管理应用，当前为 **0.1.2 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
 
 ## 开发运行
 
@@ -93,11 +93,11 @@ Milkdown → REST → KnowledgeTools → Kùzu（结构与属性）
 
 底层 REST 仅监听 127.0.0.1 随机端口，需当前会话 Bearer Key；Tauri 通过 IPC 取得连接。开发服务同源 /api 代理仅用于本地开发。
 
-**连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。应用保持打开；每次应用重启端口/Key 会变，要重新复制。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。连接配置包含本地会话凭据，请勿提交 Git。工具覆盖 CRUD、邻域、路径、全文、导入导出、回收站、概念合并、附件和设置。
+**连接外部 AI：** 设置 → 显示本地连接配置 → 将显示的 mcpServers 配置交给支持 MCP 的客户端。0.1.2 起配置固定，只含启动路径和 `GRAPH_KB_CONNECTION_FILE`，不含临时令牌。应用重启后，已运行的 MCP 在下一次调用自动读取新会话，无需重新复制 JSON 或重启 MCP。应用关闭时可读取使用手册，业务操作需先打开应用。更换安装位置或数据目录后才需更新配置。MCP 使用 stdio JSON-RPC（2025-11-25），调用同一 REST 工具边界；不是远程 HTTP MCP 服务。
 
 **接入本机 Codex：** 将上述完整 JSON 保存到已被 Git 忽略的 `.tools/mcp-connection.json`，在项目目录运行 `node scripts/connect-codex.mjs`。脚本先通过 MCP 初始化、发现工具和只读查询知识库，再用 `codex mcp add` 注册用户级 `graph-kb` 服务；不打印令牌或知识库内容。可追加 `--check` 只验证、不改 Codex 配置，也可传入其他 JSON 路径。Codex CLI 不在 PATH 时，用环境变量 `GRAPH_KB_CODEX_COMMAND` 指定其可执行文件绝对路径。此连接不需要 DeepSeek/GPT 等云端 API Key。
 
-注册后，在 Codex 设置 → MCP servers 中刷新/Restart，并用 `/mcp` 检查连接；尚未加载的当前会话不能视为已接通。应用重启后重新导出 JSON、运行脚本并刷新连接。令牌会写入本机 Codex 用户配置，连接 JSON 也应仅保留在本机。配置机制参考 [Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp)。
+首次注册或从旧配置迁移后，在 Codex 设置 → MCP servers 中刷新/Restart，并用 `/mcp` 检查连接；尚未加载的当前会话不能视为已接通。以后普通应用重启无需更新。数据目录下 `mcp-session.json` 由应用自动发布并轮换端口/令牌，Windows 文件 ACL 仅允许当前用户，正常关闭删除，异常退出残留在下次启动时替换；请勿公开或提交该私有文件。固定 JSON 不再把令牌写入 Codex 配置；旧版 URL/token 配置仍兼容，但仍会随应用重启失效。配置机制参考 [Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp)。
 
 **常用操作：** 知识库顶部切换“图谱 / 目录”；目录节点左键在右侧编辑，左右分栏可拖动；图谱和目录均右键打开节点操作菜单（创建子节点、重命名、关系管理、两种删除、新窗口打开），图谱左键仍开独立窗口；图谱控制区选择中心/跳数/路径终点，画布下方导出 PNG 或当前子图；全库导出用顶部“导出”。Markdown ZIP 含结构清单 graph.json，可用 JSON 导入完整还原并重映射 ID；CSV 必须有 title，可选 id、parentId、markdown、kind。所有导入事务整批校验，失败不留半份图。
 

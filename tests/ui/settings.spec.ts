@@ -4,6 +4,12 @@ test('云端设置：显式选择服务与模型、Key 不回显、切换供应�
   await page.goto('/');
   await page.getByRole('button', { name: '设置', exact: false }).click();
   await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '显示本地连接配置' }).click();
+  await expect(page.getByLabel('MCP 连接配置')).toHaveValue(/GRAPH_KB_CONNECTION_FILE/);
+  const mcp = JSON.parse(await page.getByLabel('MCP 连接配置').inputValue());
+  expect(Object.keys(mcp.mcpServers['graph-kb'].env)).toEqual(['GRAPH_KB_CONNECTION_FILE']);
+  expect(mcp.mcpServers['graph-kb'].env.GRAPH_KB_CONNECTION_FILE).toMatch(/mcp-session\.json$/);
+  await expect(page.getByText(/重启后自动重连/)).toBeVisible();
   await expect(page.getByLabel('开启自动建图')).not.toBeChecked();
   await page.getByLabel('供应商').selectOption('deepseek');
   await expect(page.getByLabel('API 基础地址')).toHaveValue('https://api.deepseek.com/v1');

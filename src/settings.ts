@@ -94,7 +94,7 @@ export async function renderSettings(container: HTMLElement) {
   const section = document.createElement("section");
   section.className = "api-settings";
   section.innerHTML =
-    '<h2>开放 API / MCP</h2><p class="hint">外部 AI 与界面使用相同的校验规则。保持应用打开；重启后会话端口和密钥会变化，需要重新复制配置。</p><button type="button">显示本地连接配置</button><textarea aria-label="MCP 连接配置" readonly hidden></textarea>';
+    '<h2>开放 API / MCP</h2><p class="hint">配置一次即可使用。应用重启后自动重连，无需重新复制 JSON；使用时保持应用打开。更换安装位置或知识库数据目录后需更新配置。</p><button type="button">显示本地连接配置</button><textarea aria-label="MCP 连接配置" readonly hidden></textarea>';
   section.querySelector("button")!.onclick = async () => {
     try {
       const connection = await api<{
@@ -102,6 +102,7 @@ export async function renderSettings(container: HTMLElement) {
         token: string;
         command: string;
         args: string[];
+        env: { GRAPH_KB_CONNECTION_FILE: string };
       }>("/api/connection");
       const output = section.querySelector("textarea")!;
       output.hidden = false;
@@ -111,10 +112,7 @@ export async function renderSettings(container: HTMLElement) {
             "graph-kb": {
               command: connection.command,
               args: connection.args,
-              env: {
-                GRAPH_KB_API_URL: connection.url,
-                GRAPH_KB_API_TOKEN: connection.token,
-              },
+              env: connection.env,
             },
           },
         },

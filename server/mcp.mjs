@@ -2,11 +2,13 @@
 // The desktop process owns Kùzu; this bridge calls exactly the same tool boundary.
 import { createInterface } from "node:readline";
 import { describeTool, instructions, guideUri, guideText } from "./mcp-help.mjs";
-const url = process.env.GRAPH_KB_API_URL,
-  token = process.env.GRAPH_KB_API_TOKEN;
-if (!url || !/^http:\/\/127\.0\.0\.1:\d+$/.test(url) || !token) {
+import { isAbsolute } from "node:path";
+import { readConnection, validConnection } from "./local-connection.mjs";
+const connectionFile = process.env.GRAPH_KB_CONNECTION_FILE;
+const legacyConnection = { url: process.env.GRAPH_KB_API_URL, token: process.env.GRAPH_KB_API_TOKEN };
+if (connectionFile ? !isAbsolute(connectionFile) : !validConnection(legacyConnection)) {
   console.error(
-    "Set GRAPH_KB_API_URL and GRAPH_KB_API_TOKEN from application settings.",
+    "Set GRAPH_KB_CONNECTION_FILE from application settings (legacy URL/token also supported).",
   );
   process.exit(1);
 }
@@ -179,7 +181,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.1.1" },
+      serverInfo: { name: "graph-kb", version: "0.1.2" },
       instructions,
     });
   }
@@ -210,6 +212,9 @@ async function handle(message) {
       };
     if (tool.name === "get_usage_guide") return result({ content: [{ type: "text", text: guideText }], isError: false });
     try {
+      // Resolve each call, so an already-running MCP process follows app restarts.
+      // Never automatically retry writes: a lost response may already be committed.
+      const { url, token } = connectionFile ? readConnection(connectionFile) : legacyConnection;
       const response = await fetch(url + "/api/tools", {
         method: "POST",
         headers: {
@@ -233,7 +238,9 @@ async function handle(message) {
         content: [
           {
             type: "text",
-            text: "本地应用不可用或请求失败；请保持应用打开并更新连接配置。",
+            text: connectionFile
+              ? "本地应用不可用或请求失败；请打开 Graph KB，下一次调用会自动读取新会话。若写入结果不确定，请先读取核实，不要盲目重试。"
+              : "本地应用不可用或请求失败；请保持应用打开，并从设置获取新版固定连接配置。",
           },
         ],
         isError: true,

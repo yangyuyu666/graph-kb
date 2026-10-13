@@ -22,22 +22,25 @@ try {
   const file = resolve(args.find((arg) => arg !== "--check") ?? ".tools/mcp-connection.json");
   const config = JSON.parse((await readFile(file, "utf8")).replace(/^\uFEFF/, ""));
   const server = config.mcpServers?.["graph-kb"];
-  stage = "配置无效：需要应用导出的绝对 Node/MCP 路径、回环地址和会话令牌";
+  stage = "配置无效：需要应用导出的绝对 Node/MCP 路径及固定连接文件路径（兼容旧版回环地址和令牌）";
+  const connectionFile = server?.env?.GRAPH_KB_CONNECTION_FILE;
+  const validEnvironment = connectionFile
+    ? typeof connectionFile === "string" && isAbsolute(connectionFile)
+    : /^http:\/\/127\.0\.0\.1:\d+$/.test(server?.env?.GRAPH_KB_API_URL ?? "") &&
+      typeof server?.env?.GRAPH_KB_API_TOKEN === "string" && !!server.env.GRAPH_KB_API_TOKEN;
   if (!server || !isAbsolute(server.command ?? "") ||
       !/^node(?:\.exe)?$/i.test(basename(server.command)) ||
       !Array.isArray(server.args) || server.args.length !== 1 ||
-      !isAbsolute(server.args[0]) || basename(server.args[0]) !== "mcp.mjs" ||
-      !/^http:\/\/127\.0\.0\.1:\d+$/.test(server.env?.GRAPH_KB_API_URL ?? "") ||
-      typeof server.env?.GRAPH_KB_API_TOKEN !== "string" || !server.env.GRAPH_KB_API_TOKEN) {
+      !isAbsolute(server.args[0]) || basename(server.args[0]) !== "mcp.mjs" || !validEnvironment) {
     throw new Error("Invalid configuration");
   }
   await access(server.command);
   await access(server.args[0]);
-  const env = {
+  const env = connectionFile ? { GRAPH_KB_CONNECTION_FILE: connectionFile } : {
     GRAPH_KB_API_URL: server.env.GRAPH_KB_API_URL,
     GRAPH_KB_API_TOKEN: server.env.GRAPH_KB_API_TOKEN,
   };
-  stage = "MCP 连接验证失败：请保持知识库应用打开，并重新导出本次会话配置";
+  stage = connectionFile ? "MCP 连接验证失败：请打开对应的 Graph KB 应用后重试，无需修改固定 JSON" : "MCP 连接验证失败：请保持知识库应用打开，并重新导出连接配置";
   const messages = [
     { jsonrpc: "2.0", id: 1, method: "initialize", params: {
       protocolVersion: "2025-11-25", capabilities: {},

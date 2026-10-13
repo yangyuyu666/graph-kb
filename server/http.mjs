@@ -2,8 +2,10 @@ import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { ToolError } from "./errors.mjs";
 import { fileURLToPath } from "node:url";
+import { publishConnection, clearConnection } from "./local-connection.mjs";
 
 export async function startApi(tools, token, port = 0) {
+  let connectionFile;
   const allowedOrigins = new Set([
     "http://127.0.0.1:1420",
     "http://tauri.localhost",
@@ -103,6 +105,7 @@ export async function startApi(tools, token, port = 0) {
             token,
             command: process.execPath,
             args: [fileURLToPath(new URL("./mcp.mjs", import.meta.url))],
+            env: { GRAPH_KB_CONNECTION_FILE: connectionFile },
           }),
         );
         return;
@@ -220,5 +223,13 @@ export async function startApi(tools, token, port = 0) {
     server.once("error", reject);
     server.listen(port, "127.0.0.1", resolve);
   });
-  return { server, url: `http://127.0.0.1:${server.address().port}` };
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    connectionFile = publishConnection(tools.store.root, { url, token });
+  } catch (error) {
+    await new Promise((resolve) => server.close(resolve));
+    throw error;
+  }
+  server.on("close", () => clearConnection(connectionFile, token));
+  return { server, url, connectionFile };
 }

@@ -1,12 +1,12 @@
 # 开发进度
 
-更新：2026-10-13。项目版本：0.1.1。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-13。项目版本：0.1.2。工作目录：C:/Users/27783/graph-kb。
 
 ## 当前结果
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.1.1** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。关闭旧版窗口后重新启动该程序即可使用；默认数据目录标识保持不变，采用增量建表，不迁走用户数据。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录。
+已生成并实际安装 Windows x64 **0.1.2** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据目录标识保持不变，不迁走用户数据。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；验收后已启动默认数据目录的应用并迁移 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -25,7 +25,7 @@
 - 图谱管线：写正文即更新真实 Kùzu 节点；已开启云抽取时生成/复用隐藏 Concept 和 CHILD_OF；跨文档去重、内容/模型缓存、相关文档、反向链接。云失败保正文；缓存不复活人工删边。可见关系可在 UI 修正/移除，后台概念可通过统一工具合并。
 - 数据迁移：Markdown 文件夹、CSV、Graph KB JSON 原子导入；Markdown ZIP 和完整 JSON 导出，包含图结构、正文与附件；同批链接相对化 / 导入 ID 重映射，重复导入复用同库概念。
 - 删除：单节点或整库 30 天回收站，边级联移除、正文随迁，恢复 ID/正文/可恢复关系；已删除链接灰色占位且禁点；过期附件一起清理。启动、每小时及请求维护检查过期，应用关闭时不后台唤醒。
-- API：REST CRUD、图查询、导入导出、附件、回收站、配置；MCP stdio 2025-11-25 适配器调用同一工具层。设置页显示本地 MCP 连接配置；每次服务重启需更新随机端口/会话 Key。
+- API：REST CRUD、图查询、导入导出、附件、回收站、配置；MCP stdio 2025-11-25 适配器调用同一工具层。设置页导出固定 MCP JSON，只引用本机会话文件；普通应用重启不必重新配置，MCP 每次调用自动读取新端口与令牌。
 
 Tag、File、Person、Task 支持创建、编辑及图关系，共享文档能力；没有自行添加大纲未定义的专属工作流。
 
@@ -55,11 +55,11 @@ Windows x64；Node 24.19.0、Kùzu 0.11.3、Milkdown 7.22.3、Cytoscape.js 3.34.
 
 | 检查 | 结果 |
 |---|---|
-| 后端测试 | 34 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、CSV/Markdown/JSON 原子导入、附件、缓存/合并、真实 MCP 子进程、使用指南读取和操作流程 |
-| Edge 界面测试 | 9 项全通过，另 1 项快速保存回归通过（共 10 项）；新增内联编辑、可拖分栏、草稿保护、图谱右键/左键行为、级联删除共享分支保护 |
+| 后端测试 | 36 项通过（含 MCP 子测试）：真实磁盘 Kùzu、约束/并发/恢复、云协议、软删除/恢复/过期、导入导出、附件、缓存/合并、MCP 手册和操作流程、跨应用重启自动重连、Windows 会话文件 ACL |
+| Edge 界面测试 | 0.1.2 针对设置页 1 项通过：固定 JSON 导出和既有云设置流程。0.1.1 的 9 项全套加 1 项快速保存回归历史通过；此次未重复整套 |
 | 独立运行时 | 1 项通过，复制出仓库、空 PATH、实际保存和重启回读 |
 | TypeScript / Vite | 构建通过；主 bundle 约 1.97 MB、gzip 624 KB，存在体积提示 |
-| Tauri release / NSIS | 0.1.1 构建成功，安装退出 0 |
+| Tauri release / NSIS | 0.1.2 构建成功，安装退出 0 |
 | 已安装原生应用 | 空 PATH、临时工作目录、隔离数据；真实 IPC、目录右侧编辑保存、右键创建子节点、Cytoscape 画布、删除恢复、中文保存、新窗口链接、设置默认关闭、关闭退出通过 |
 | npm 许可元数据 | 368 个锁条目，无 GPL/AGPL/LGPL/未知项；随包收集 294 项非 dev npm 许可及 242 项 Windows Rust 许可 |
 | npm audit --omit=dev | 0 vulnerabilities |
@@ -78,7 +78,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.1.1_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.1_x64-setup.exe)，大小见构建记录；校验值见 [windows-package.json](docs/evidence/windows-package.json)。该文件记录安装时的验收结果；主程序与 release 仅有预期的 NSIS 标记 3 字节差异。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端与许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。后续 MCP 说明更新已单独同步到本机安装目录，见下文；已有安装包未重新生成，仍为更新前版本。
+安装包：[Graph KB_0.1.2_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.1.2_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 
@@ -86,7 +86,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 | 阻塞 / 未验项 | 影响与处理 |
 |---|---|
-| 当前 Codex 对话尚未加载新增 MCP 工具 | 已读取用户保存在本机的会话配置，完成真实连接验证和注册；`codex mcp list` 确认 `graph-kb` 已启用。需在 Codex MCP 设置刷新/Restart 服务，之后验证对话内调用 |
+| 当前 Codex 客户端需一次性加载固定连接配置 | 已迁移到 GRAPH_KB_CONNECTION_FILE，旧端口/令牌已从当前 graph-kb 配置移除；真实新 MCP 子进程验证通过。Codex MCP 设置 Restart 一次后加载；之后普通应用重启自动恢复，无需再复制 JSON |
 | 无用户选定的真实模型/API Key | DeepSeek、GPT、Gemini、MiMo 协议已模拟验证，但真实抽取质量、费用、速度未验。在应用设置填写即可；不用在聊天发 Key |
 | 无签名证书、商店账户与干净 Windows VM | 无法完成商店分发和跨机器发行验收；不阻塞本机 MVP |
 | 无已确认的规模/性能指标 | 全文为本地扫描、顶级平行边为两两建边，只有功能规模测试；大图、大批附件、断电、跨平台未验收 |
@@ -105,6 +105,14 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 - MCP 流程测试覆盖版本冲突不覆盖正文、原子改父关系、级联删除共享分支保护及批次恢复。指南资源、帮助工具内容一致；未知 URI 拒绝；参数说明可通过工具发现取得。
 - 已备份旧 MCP 入口，并将 `mcp.mjs`、`mcp-help.mjs`、`mcp-guide.md` 同步到当前 Codex 配置指向的 `.tools/installed-smoke/resources/runtime/server/`，逐文件校验哈希。未重启用户桌面应用，未改用户数据。`node scripts/connect-codex.mjs --check` 对真实会话验证通过：32 项工具、知识库只读查询、初始化说明、指南资源和帮助工具均正常。
 - 已运行的客户端 MCP 子进程仍需在 MCP 设置中 Restart 后加载更新；本次验证使用新启动的真实 MCP 子进程，不冒充当前对话已加载。旧 NSIS 安装包未重打，重装旧包会覆盖本次本机 MCP 文件更新；新版打包流程已包含这些文件。
+
+## 固定 MCP 配置（0.1.2）
+
+0.1.2 固定连接：`server/local-connection.mjs` 在发布令牌前限制文件访问（Windows 当前用户 SID ACL；非 Windows 0600），原子更新数据目录 `mcp-session.json`，正常关闭删除；崩溃残留在下次启动替换。清理校验令牌归属，旧服务退出不会删新服务文件。这个私有文件与用户导出的固定 JSON 是不同文件，云端 API Key 仍仅保存在进程内存。
+
+新增重连测试从应用未启动开始，保持同一个 MCP 进程，启动→创建隔离夹具→关闭→重新启动→读取原库；验证两次导出 JSON 完全一致、令牌已轮换、无需重启 MCP。失败写入不自动重试，避免重复创建。设置导出、Codex 接入脚本及手册同步更新；旧 URL/token 方式仍兼容。首次构建因主包版本升级后 Cargo.lock 未同步而失败，补齐根包版本后构建成功；设置测试增加等待异步 JSON 返回后通过。
+
+0.1.2 安装时用户应用已关闭；仅结束旧 MCP 桥接进程以释放安装文件。实际安装后在隔离数据上完成原生验收，再启动默认数据的应用。已自动更新 `.tools/mcp-connection.json` 和 Codex 配置，确认 env 仅有 GRAPH_KB_CONNECTION_FILE；真实会话只读验证通过，未创建或编辑用户文档。
 
 ## Git 与运行
 
