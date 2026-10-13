@@ -1,16 +1,25 @@
 {
   "date": "2026-10-13",
-  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.0.1_x64-setup.exe",
-  "bytes": 30247509,
-  "sha256": "73989fa7205bfba9ff662f1fc451f4868490ec548db0b5805acba1c2b9798158",
+  "version": "0.1.0",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.1.0_x64-setup.exe",
+  "bytes": 30401910,
+  "sha256": "63f21387f69db5c4f5bf2a83d87b72348b5a5571f098e8946ae58b651ed2e030",
   "platform": "windows-x64",
   "signed": false,
   "installerExitCode": 0,
   "installedAt": ".tools/installed-smoke",
+  "installedServiceFilesMatchSource": true,
+  "installedExecutableComparison": "Identical to release exe except Tauri NSIS bundle marker UNK -> NSS (3 bytes)",
   "nativeVerification": [
-    "debug",
-    "release with empty PATH and outside working directory",
-    "installed release with empty PATH and outside working directory"
+    "installed release with empty PATH, temporary working directory and isolated graph data",
+    "Tauri IPC, parent-child tree creation, Cytoscape canvas, trash/restore",
+    "Milkdown Chinese editing, persisted Kuzu document, independent node-link windows, default-off settings, clean close"
   ],
+  "tests": {
+    "backend": 30,
+    "ui": 6,
+    "additionalUiRerun": 3,
+    "standaloneRuntime": 1
+  },
   "cloudProviderLiveTest": "not run: no user API key or model configured"
 }

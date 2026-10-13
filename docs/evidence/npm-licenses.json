@@ -686,6 +686,12 @@
       "development": true
     },
     {
+      "path": "node_modules/@types/cytoscape",
+      "version": "3.21.9",
+      "license": "MIT",
+      "development": true
+    },
+    {
       "path": "node_modules/@types/debug",
       "version": "4.1.13",
       "license": "MIT",
@@ -1064,6 +1070,12 @@
       "development": false
     },
     {
+      "path": "node_modules/cytoscape",
+      "version": "3.34.3",
+      "license": "MIT",
+      "development": false
+    },
+    {
       "path": "node_modules/debug",
       "version": "4.4.3",
       "license": "MIT",
@@ -1188,6 +1200,12 @@
       "version": "6.5.0",
       "license": "MIT",
       "development": true
+    },
+    {
+      "path": "node_modules/fflate",
+      "version": "0.8.3",
+      "license": "MIT",
+      "development": false
     },
     {
       "path": "node_modules/follow-redirects",
