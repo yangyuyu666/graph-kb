@@ -41,6 +41,7 @@ test('REST 使用同一工具层：鉴权、持久化、结构化校验错误、
   const error = (await badEdge.json()).error;
   assert.equal(error.code, 'SELF_EDGE');
   assert.ok(error.suggestion);
-  assert.equal((await request(`/api/nodes/${page.id}`, 'DELETE')).status, 404);
+  assert.equal((await request(`/api/nodes/${page.id}`, 'DELETE')).status, 200);
+  assert.equal((await request(`/api/nodes/${page.id}`)).status, 410);
   assert.equal((await request('/api/kbs', 'POST', { name: 'bad content type' }, { 'Content-Type': 'text/plain' })).status, 415);
 });
