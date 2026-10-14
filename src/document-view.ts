@@ -44,7 +44,7 @@ export async function mountDocument(
 
   checkMounted();
   if (!options.embedded) container.className = "document-app";
-  container.innerHTML = `<div class="document"><header><h1 id="title">正在打开…</h1><button id="save" class="primary" disabled>保存</button></header><div class="document-meta"><span id="status" role="status">加载中</span><span id="extraction-state">自动建图：读取中</span></div><div id="editor"></div></div>`;
+  container.innerHTML = `<div class="document"><div class="document-chrome"><header><h1 id="title">正在打开…</h1><button id="save" class="primary" disabled>保存</button></header><div class="document-meta"><span id="status" role="status">加载中</span><span id="extraction-state">自动建图：读取中</span></div></div><div id="editor"></div></div>`;
   const extractionState = el("#extraction-state");
   const refreshSettings = async () => {
     try {

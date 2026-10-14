@@ -1,0 +1,77 @@
+import { test, expect } from "@playwright/test";
+
+test("库内搜索支持按钮和回车，正文命中展开父目录，清空恢复，旧请求不覆盖新结果", async ({ page, request }) => {
+  const kb = await (await request.post("/api/kbs", { data: { name: "搜索交互验证" } })).json();
+  const parent = await (await request.post("/api/nodes", { data: { kbId: kb.id, title: "父目录" } })).json();
+  const child = await (await request.post("/api/nodes", { data: { kbId: kb.id, title: "研究记录", parentId: parent.id } })).json();
+  await request.patch(`/api/nodes/${child.id}`, { data: { revision: 0, markdown: "正文独有关键词青柠，父目录" } });
+  await request.post("/api/nodes", { data: { kbId: kb.id, title: "其他资料" } });
+  await page.goto("/");
+  await page.getByRole("button", { name: /搜索交互验证/ }).click();
+  await page.getByRole("button", { name: "折叠 父目录", exact: true }).click();
+  const input = page.getByRole("searchbox", { name: "搜索节点" });
+  const form = page.getByRole("search", { name: "当前知识库搜索" });
+  const status = page.locator(".kb-workspace > #status");
+  await input.fill("青柠");
+  await input.press("Enter");
+  await expect(status).toContainText("找到 1 个节点");
+  await expect(page.getByRole("button", { name: "研究记录", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "父目录", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "其他资料", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "折叠 父目录", exact: true }).click();
+  await input.fill("父目录"); await input.press("Enter");
+  await expect(status).toContainText("找到 2 个节点");
+  await expect(page.getByRole("button", { name: "研究记录", exact: true })).toBeVisible();
+  await input.fill("没有这个词");
+  await form.getByRole("button", { name: "搜索", exact: true }).click();
+  await expect(status).toContainText("找到 0 个节点");
+  await input.fill("");
+  await input.press("Enter");
+  await expect(page.getByRole("button", { name: "其他资料", exact: true })).toBeVisible();
+  let release!: () => void, received!: () => void;
+  const requested = new Promise<void>(resolve => { received = resolve; });
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/search?**", async route => {
+    if (new URL(route.request().url()).searchParams.get("q") === "旧查询") {
+      received(); await pending;
+      await route.fulfill({ json: [child] });
+    } else await route.continue();
+  });
+  await input.fill("旧查询"); await input.press("Enter"); await requested;
+  await input.fill("其他资料"); await input.press("Enter");
+  await expect(status).toContainText("搜索“其他资料”：找到 1 个节点");
+  release();
+  await expect(page.getByRole("button", { name: "其他资料", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "研究记录", exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "图谱", exact: true }).click();
+  await expect(page.locator("#graph-canvas canvas").first()).toBeVisible();
+  expect(await page.locator("#graph-canvas").evaluate((el: any) => el._cyreg.cy.nodes().map((n: any) => n.data("label")))).toEqual(["其他资料"]);
+});
+
+test("长文档滚动时标题、保存与附件栏固定，目录内和独立窗口均可保存", async ({ page, request, context }) => {
+  const kb = await (await request.post("/api/kbs", { data: { name: "文档固定工具栏" } })).json();
+  const node = await (await request.post("/api/nodes", { data: { kbId: kb.id, title: "长文档固定标题" } })).json();
+  await request.patch(`/api/nodes/${node.id}`, { data: { revision: 0, markdown: Array.from({length: 80}, (_, i) => `第 ${i + 1} 段正文，滚动检查工具栏。`).join("\n\n") } });
+  await page.goto("/"); await page.getByRole("button", { name: /文档固定工具栏/ }).click();
+  await page.getByRole("button", { name: "长文档固定标题", exact: true }).click();
+  const pane = page.locator(".inline-document-pane");
+  await expect(pane.locator(".ProseMirror")).toBeVisible();
+  const chrome = pane.locator(".document-chrome");
+  const before = (await chrome.boundingBox())!;
+  await pane.evaluate(el => { el.scrollTop = 900; });
+  await expect.poll(() => pane.evaluate(el => el.scrollTop)).toBeGreaterThan(800);
+  expect(Math.abs((await chrome.boundingBox())!.y - before.y)).toBeLessThan(2);
+  await expect(pane.getByRole("button", { name: "保存", exact: true })).toBeInViewport();
+  await expect(pane.getByRole("button", { name: "附件 / 图片", exact: true })).toBeInViewport();
+  await pane.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(pane.getByRole("status")).toContainText("已保存到本地");
+  await page.screenshot({ path: "docs/evidence/sticky-document.png" });
+  const doc = await context.newPage(); await doc.goto(`/?node=${node.id}`);
+  await expect(doc.locator(".ProseMirror")).toBeVisible();
+  await doc.evaluate(() => window.scrollTo(0, 900));
+  await expect.poll(() => doc.evaluate(() => window.scrollY)).toBeGreaterThan(800);
+  expect((await doc.locator(".document-chrome").boundingBox())!.y).toBeCloseTo(0, 0);
+  await expect(doc.getByRole("button", { name: "引用节点", exact: true })).toBeInViewport();
+  await doc.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(doc.getByRole("status")).toContainText("已保存到本地");
+});

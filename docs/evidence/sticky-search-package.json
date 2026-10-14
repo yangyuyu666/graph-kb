@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-14",
+  "version": "0.2.3",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.3_x64-setup.exe",
+  "bytes": 30426558,
+  "sha256": "7df6327592cb9ece92255dd9cffb9dcdaabaef876f637cba46b7885d8339ed1c",
+  "buildExitCode": 0,
+  "signed": false,
+  "deployment": "Installed after user save-and-close confirmation on 2026-10-14",
+  "checks": {
+    "typescript": true,
+    "ui": 16,
+    "focusedRerun": 2,
+    "native": "Release executable, isolated graph/WebView data, empty PATH, clean exit",
+    "backend": "Not rerun; no backend business logic changes"
+  },
+  "screenshot": "docs/evidence/sticky-document.png",
+  "installerExitCode": 0,
+  "installedVersion": "0.2.3",
+  "installedAt": ".tools/installed-smoke",
+  "installedServiceFilesMatched": 16,
+  "installedExecutableComparison": "Matches release except expected NSIS bundle marker",
+  "installedNativeVerification": "Passed with isolated data and empty PATH",
+  "userDataModified": false
+}

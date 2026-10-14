@@ -1,6 +1,15 @@
 # 开发进度
 
-更新：2026-10-14。项目版本：0.2.2。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-14。项目版本：0.2.3。工作目录：C:/Users/27783/graph-kb。
+
+## 文档工具栏固定与库内搜索（0.2.3）
+
+- 标题、保存按钮、附件/媒体/引用工具栏和状态统一放入吸顶区域，正文在下方滚动。目录右侧编辑区和独立文档窗口共用实现；取消文档外壳的隐藏式滚动容器，使用裁剪避免阻断吸顶定位。长标题和工具栏换行时仍作为整体固定。
+- 当前库搜索增加“搜索”按钮及回车提交，保留输入后自动筛选；中文输入法组词期间不发送查询。展示搜索中、命中数量和无结果状态，目录保留父级路径并展开命中节点，直接匹配项标识背景；清空恢复列表。检索标题与已保存正文，不检索尚未保存的编辑草稿。
+- 提交搜索同时刷新图结构，支持已保存的新节点；请求序号防止较慢的旧查询覆盖新结果。目录和图谱沿用同一搜索结果与节点类型筛选，保留编辑组件和未保存草稿。
+- 验证包含真实输入、按钮/回车、正文命中、折叠目录展开、父子同时命中、清空、旧响应迟到、图谱过滤，以及两个文档容器滚动后工具栏位置和保存行为。界面截图：`docs/evidence/sticky-document.png`。
+- 验证结果：TypeScript/前端构建通过，完整浏览器 16 项通过，补充父子同时命中后相关 2 项复验通过；发布程序使用隔离数据、空 PATH 的桌面回归通过。本次未改后端业务逻辑，未重复运行后端全套测试。用户确认保存关闭后，已更新 `.tools/installed-smoke` 为 0.2.3；安装器退出 0，16 个服务/指南文件与源码哈希一致，主程序仅有预期 NSIS 标记差异。安装版隔离数据、空 PATH 验收通过，实际知识库未写入测试内容。
+
 
 ## 节点与边自定义属性（0.2.2）
 
@@ -53,7 +62,7 @@
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.2.2** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
+已生成并实际安装 Windows x64 **0.2.3** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -128,7 +137,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.2.2_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.2_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.2.3_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.3_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 

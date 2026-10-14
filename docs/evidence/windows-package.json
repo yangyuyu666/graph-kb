@@ -1,9 +1,9 @@
 {
   "date": "2026-10-14",
-  "version": "0.2.2",
-  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.2_x64-setup.exe",
-  "bytes": 30417501,
-  "sha256": "8b9fa25c32ea2fceaabd463dce3ab7bfc7d523bba079b8016e0b8d4c4cd958c5",
+  "version": "0.2.3",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.3_x64-setup.exe",
+  "bytes": 30426558,
+  "sha256": "7df6327592cb9ece92255dd9cffb9dcdaabaef876f637cba46b7885d8339ed1c",
   "platform": "windows-x64",
   "signed": false,
   "installerExitCode": 0,
@@ -14,16 +14,18 @@
     "Installed executable: isolated graph and WebView data, empty PATH, temporary working directory, clean exit",
     "Database export and independent copy import, edge labels, trash restore, inline editor, node menus, native links",
     "0.2.1 installed executable: multiline edge label saves, only first line on canvas, left-click full text dialog",
-    "0.2.2 installed executable: node/edge custom properties write/read and database backup; installed MCP initializes as 0.2.2 with 35 tools and updated schemas/guide"
+    "0.2.2 installed executable: node/edge custom properties write/read and database backup; installed MCP initializes as 0.2.2 with 35 tools and updated schemas/guide",
+    "0.2.3 release and installed executable: isolated data, empty PATH, existing native workflows and clean exit"
   ],
   "tests": {
     "backend": 54,
-    "ui": 14,
-    "uiScope": "Full browser suite passed",
+    "ui": 16,
+    "uiScope": "Complete suite and focused rerun: inline/standalone sticky toolbar, save after scroll, explicit/Enter search, matching ancestors, stale requests and graph filtering",
     "standaloneRuntime": 1,
     "migration": "Shared graph split, deleted KB restoration, missing-document failure/retry, independent physical DBs, workspace lock, catalog rebuild",
     "recovery": "Post-commit file promotion failure recovers journal before database export",
-    "properties": "Nested JSON, full replacement/clear, revisions, invalid input rollback, legacy and interrupted schema migration, JSON/database restore/copy, trash restoration, REST and real MCP stdio"
+    "properties": "Nested JSON, full replacement/clear, revisions, invalid input rollback, legacy and interrupted schema migration, JSON/database restore/copy, trash restoration, REST and real MCP stdio",
+    "backendValidationVersion": "0.2.2 (not rerun for this frontend-only change)"
   },
   "actualDataMigration": {
     "version": "0.2.0",
@@ -39,7 +41,7 @@
     "environmentKeys": [
       "GRAPH_KB_CONNECTION_FILE"
     ],
-    "note": "Fixed JSON unchanged; refresh client tool catalog for update_node and properties. User application remains closed; startup will migrate each loaded library."
+    "note": "Configuration and tool schemas unchanged; application left closed after update"
   },
   "cloudProviderLiveTest": "not run: no user API key or model configured",
   "installedServiceFilesMatched": 16

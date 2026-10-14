@@ -119,6 +119,12 @@ export async function renderWorkspace(
   search.placeholder = "搜索节点标题或正文";
   search.setAttribute("aria-label", "搜索节点");
   search.type = "search";
+  const searchForm = e("form", undefined, "workspace-search");
+  searchForm.setAttribute("role", "search");
+  searchForm.setAttribute("aria-label", "当前知识库搜索");
+  const searchButton = e("button", "搜索");
+  searchButton.type = "submit";
+  searchForm.append(search, searchButton);
   const kind = e("select");
   kind.setAttribute("aria-label", "节点类型筛选");
   kind.append(
@@ -127,7 +133,7 @@ export async function renderWorkspace(
   );
   toolbar.append(
     tabs,
-    search,
+    searchForm,
     kind,
     button("导入", () => importDialog()),
     button("导出", () => exportDialog()),
@@ -164,26 +170,60 @@ export async function renderWorkspace(
     graphTab.setAttribute("aria-selected", String(view === "graph"));
     if (view === "tree") renderTree();
     else renderGraph();
+    if (appliedSearch)
+      status.textContent = `搜索“${appliedSearch}”：找到 ${filtered().length} 个节点（标题或正文匹配${view === "tree" ? "，目录保留父级路径" : ""}）`;
+    else if (view === "tree") status.textContent = `${filtered().length} 个节点`;
   }
   let matches: Set<string> | undefined, timer: ReturnType<typeof setTimeout>;
-  search.oninput = () => {
+  let appliedSearch = "", searchVersion = 0, composing = false;
+  async function runSearch() {
     clearTimeout(timer);
+    const version = ++searchVersion;
     const term = search.value.trim();
-    timer = setTimeout(async () => {
-      try {
-        const found = term
-          ? await api<PageNode[]>(
+    searchForm.setAttribute("aria-busy", "true");
+    status.textContent = term ? "正在搜索标题和正文…" : "正在显示全部节点…";
+    try {
+      const [data, found] = await Promise.all([
+        api<GraphData>(`/api/kbs/${kb.id}/graph`),
+        term
+          ? api<PageNode[]>(
               `/api/search?kbId=${kb.id}&q=${encodeURIComponent(term)}`,
             )
-          : undefined;
-        if (disposed || search.value.trim() !== term) return;
-        matches = found ? new Set(found.map((n) => n.id)) : undefined;
-        render();
-      } catch (error) {
-        notify(error);
+          : undefined,
+      ]);
+      if (disposed || version !== searchVersion) return;
+      graph = data;
+      appliedSearch = term;
+      matches = found ? new Set(found.map((n) => n.id)) : undefined;
+      // Reveal matching descendants even when their ancestors were collapsed.
+      const visible = new Set(matches);
+      let more = true;
+      while (matches && more) {
+        more = false;
+        for (const edge of graph.edges) if (edge.type === "CHILD_OF" && visible.has(edge.source)) {
+          collapsed.delete(edge.target);
+          if (!visible.has(edge.target)) { visible.add(edge.target); more = true; }
+        }
       }
-    }, 200);
+      render();
+    } catch (error) {
+      if (!disposed && version === searchVersion) notify(error);
+    } finally {
+      if (version === searchVersion) searchForm.setAttribute("aria-busy", "false");
+    }
+  }
+  searchForm.onsubmit = (event) => {
+    event.preventDefault();
+    if (!composing) void runSearch();
   };
+  search.oninput = () => {
+    ++searchVersion;
+    clearTimeout(timer);
+    searchForm.setAttribute("aria-busy", "false");
+    if (!composing) timer = setTimeout(() => void runSearch(), 200);
+  };
+  search.addEventListener("compositionstart", () => { composing = true; ++searchVersion; clearTimeout(timer); });
+  search.addEventListener("compositionend", () => { composing = false; clearTimeout(timer); timer = setTimeout(() => void runSearch(), 200); });
   kind.onchange = render;
   function filtered() {
     return graph.nodes.filter(
@@ -230,7 +270,7 @@ export async function renderWorkspace(
       const row = e(
         "div",
         undefined,
-        `tree-row${selected === node.id ? " selected" : ""}`,
+        `tree-row${selected === node.id ? " selected" : ""}${matches?.has(node.id) ? " search-match" : ""}`,
       );
       const toggle = button(
         descendants.length ? (collapsed.has(node.id) ? "›" : "⌄") : "",
