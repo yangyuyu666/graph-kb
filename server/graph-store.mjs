@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { decodeProperties } from "./properties.mjs";
 
 async function promoteFile(from, to) {
   try {
@@ -55,6 +56,11 @@ export class GraphStore {
       if (!properties.some((property) => property.name === "label"))
         await this.query(`ALTER TABLE ${type} ADD label STRING DEFAULT ''`);
     }
+    for (const type of ["Node", "CHILD_OF", "SIBLING_OF"]) {
+      const fields = await this.query(`CALL table_info('${type}') RETURN *`);
+      if (!fields.some((field) => field.name === "properties"))
+        await this.query(`ALTER TABLE ${type} ADD properties STRING DEFAULT '{}'`);
+    }
     await this.recover();
     return this;
   }
@@ -82,10 +88,10 @@ export class GraphStore {
   }
   async node(id) {
     const rows = await this.query(
-      "MATCH (n:Node {id: $id}) RETURN n.id AS id, n.kbId AS kbId, n.kind AS kind, n.title AS title, n.conceptKey AS conceptKey, n.updatedAt AS updatedAt, n.revision AS revision",
+      "MATCH (n:Node {id: $id}) RETURN n.id AS id, n.kbId AS kbId, n.kind AS kind, n.title AS title, n.conceptKey AS conceptKey, n.updatedAt AS updatedAt, n.revision AS revision, n.properties AS properties",
       { id },
     );
-    return rows[0] ? { ...rows[0], revision: Number(rows[0].revision) } : null;
+    return rows[0] ? { ...rows[0], revision: Number(rows[0].revision), properties: decodeProperties(rows[0].properties) } : null;
   }
   async document(id) {
     return readFile(join(this.root, "documents", `${id}.md`), "utf8");

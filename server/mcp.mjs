@@ -13,6 +13,7 @@ if (connectionFile ? !isAbsolute(connectionFile) : !validConnection(legacyConnec
   process.exit(1);
 }
 const string = { type: "string" },
+  customProperties = { type: "object", additionalProperties: true },
   id = string,
   object = (properties, required = []) => ({
     type: "object",
@@ -45,10 +46,12 @@ const definitions = [
       title: string,
       parentId: id,
       kind: { enum: ["Page", "Tag", "File", "Person", "Task"] },
+      properties: customProperties,
     },
     ["kbId", "title"],
   ],
   ["get_node", "读取文档", { id }, ["id"]],
+  ["update_node", "按 revision 修改节点标题或自定义属性", { id, revision: { type: "integer" }, title: string, properties: customProperties }, ["id", "revision"]],
   [
     "update_doc",
     "按 revision 保存文档并运行已开启的抽取",
@@ -98,14 +101,14 @@ const definitions = [
   [
     "create_edge",
     "校验后创建 CHILD_OF 或 SIBLING_OF",
-    { type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 } },
+    { type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 }, properties: customProperties },
     ["type", "source", "target"],
   ],
   ["delete_edge", "删除指定关系", { id }, ["id"]],
   [
     "update_edge",
     "在事务内修正关系",
-    { id, type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 } },
+    { id, type: { enum: ["CHILD_OF", "SIBLING_OF"] }, source: id, target: id, label: { type: "string", maxLength: 200 }, properties: customProperties },
     ["id"],
   ],
   ["list_trash", "列出尚未过期的回收站", {}, []],
@@ -183,7 +186,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.2.1" },
+      serverInfo: { name: "graph-kb", version: "0.2.2" },
       instructions,
     });
   }

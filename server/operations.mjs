@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
 import { rewriteReferences } from "./node-links.mjs";
+import { encodeProperties, decodeProperties, propertiesObject } from "./properties.mjs";
 const fail = (message, code = "INVALID_INPUT") =>
   new ToolError(code, message, "检查输入并刷新后重试");
 const types = ["Page", "Tag", "File", "Person", "Task", "Concept"];
@@ -19,10 +20,10 @@ export const mvpMethods = {
   },
   async allEdges(kbId) {
     const edges = await this.store.query(
-      "MATCH (a:Node {kbId: $kbId})-[r]->(b:Node) RETURN a.id AS source, b.id AS target, label(r) AS type, coalesce(r.label, '') AS label",
+      "MATCH (a:Node {kbId: $kbId})-[r]->(b:Node) RETURN a.id AS source, b.id AS target, label(r) AS type, coalesce(r.label, '') AS label, r.properties AS properties",
       { kbId },
     );
-    return edges.map((e) => ({ ...e, id: edgeId(e) }));
+    return edges.map((e) => ({ ...e, id: edgeId(e), properties: decodeProperties(e.properties) }));
   },
   async graph({ kbId, center, hops = 1, edgeType, kind, q = "" }) {
     await this.mustKb(kbId);
@@ -196,6 +197,9 @@ export const mvpMethods = {
     return { id, name };
   },
   async renameNode({ id, title, revision }) {
+    return this.updateNode({ id, title: requireText(title, "标题"), revision });
+  },
+  async updateNode({ id, title, properties, revision }) {
     const node = await this.mustNode(id);
     if (node.kind === "Concept") throw fail("请使用概念管理工具");
     if (revision !== node.revision)
@@ -205,13 +209,15 @@ export const mvpMethods = {
         "刷新节点信息后重试",
         409,
       );
-    title = requireText(title, "标题");
+    if (title === undefined && properties === undefined) throw fail("至少提供 title 或 properties");
+    title = title === undefined ? node.title : requireText(title, "标题");
+    properties = properties === undefined ? node.properties : propertiesObject(properties);
     const updatedAt = new Date().toISOString();
     await this.store.query(
-      "MATCH (n:Node {id:$id}) SET n.title=$title,n.updatedAt=$updatedAt,n.revision=$revision",
-      { id, title, updatedAt, revision: revision + 1 },
+      "MATCH (n:Node {id:$id}) SET n.title=$title,n.properties=$properties,n.updatedAt=$updatedAt,n.revision=$revision",
+      { id, title, properties: encodeProperties(properties), updatedAt, revision: revision + 1 },
     );
-    return { ...node, title, updatedAt, revision: revision + 1 };
+    return { ...node, title, properties, updatedAt, revision: revision + 1 };
   },
   async removeEdge({ id, type, source, target }) {
     if (id) [type, source, target] = id.split(":");
@@ -230,16 +236,17 @@ export const mvpMethods = {
       return { deleted: true };
     });
   },
-  async updateEdge({ id, type, source, target, label }) {
+  async updateEdge({ id, type, source, target, label, properties }) {
     const existing = await this.getEdge({ id });
     type ??= existing.type;
     source ??= existing.source;
     target ??= existing.target;
     label = label === undefined ? existing.label : edgeLabel(label);
+    properties = properties === undefined ? existing.properties : propertiesObject(properties);
     if (type === "SIBLING_OF" && source > target)
       [source, target] = [target, source];
     if (type === existing.type && source === existing.source && target === existing.target)
-      return this.writeEdge(type, source, target, label);
+      return this.writeEdge(type, source, target, label, properties);
     const [oldType, oldSource, oldTarget] = (id ?? "").split(":");
     if (!["CHILD_OF", "SIBLING_OF"].includes(oldType)) throw fail("原关系无效");
     const old = await this.mustNode(oldSource);
@@ -252,7 +259,7 @@ export const mvpMethods = {
         { source: oldSource, target: oldTarget },
       );
       await this.validateEdge(type, source, target);
-      const result = await this.writeEdge(type, source, target, label);
+      const result = await this.writeEdge(type, source, target, label, properties);
       await this.syncSiblings(node.kbId);
       return result;
     });
@@ -414,7 +421,7 @@ export const mvpMethods = {
             skipped.push(edge.id);
             continue;
           }
-          await this.writeEdge(edge.type, edge.source, edge.target, edge.label);
+          await this.writeEdge(edge.type, edge.source, edge.target, edge.label, edge.properties);
         }
         await this.syncSiblings(snapshot.kbId);
         await this.store.query("MATCH (t:Trash {id:$id}) DELETE t", { id });
@@ -725,6 +732,7 @@ export const mvpMethods = {
               : "",
           updatedAt: now,
           revision: 0,
+          properties: propertiesObject(n.properties),
           markdown,
         };
       })
@@ -744,6 +752,7 @@ export const mvpMethods = {
       return {
         ...e,
         label: e.label === undefined ? "" : edgeLabel(e.label),
+        properties: propertiesObject(e.properties),
         source: mapping.get(e.source),
         target: mapping.get(e.target),
       };
@@ -774,7 +783,7 @@ export const mvpMethods = {
             (a.type === "CHILD_OF" ? -1 : 1) - (b.type === "CHILD_OF" ? -1 : 1),
         )) {
           await this.validateEdge(e.type, e.source, e.target);
-          await this.writeEdge(e.type, e.source, e.target, e.label);
+          await this.writeEdge(e.type, e.source, e.target, e.label, e.properties);
         }
         for (const { data, ...asset } of assets)
           await this.store.query(
@@ -815,7 +824,7 @@ export const mvpMethods = {
             to = e.target === source ? target : e.target;
           if (from !== to) {
             await this.validateEdge(e.type, from, to);
-            await this.writeEdge(e.type, from, to, e.label);
+            await this.writeEdge(e.type, from, to, e.label, e.properties);
           }
         }
         await this.store.query("MATCH (n:Node {id:$id}) DETACH DELETE n", {
@@ -856,6 +865,7 @@ export const mvpOperations = {
   related: mvpMethods.related,
   rename_kb: mvpMethods.renameKb,
   rename_node: mvpMethods.renameNode,
+  update_node: mvpMethods.updateNode,
   delete_node: async function (input) {
     return this.trash(input);
   },

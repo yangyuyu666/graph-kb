@@ -81,6 +81,26 @@ test("MCP stdio 外部进程：初始化、工具发现、实际 CRUD、规则�
     assert.match(catalog.find((t) => t.name === "restore").inputSchema.properties.id.description, /批次/);
   });
   const kb = (await tool("create_kb", { name: "AI 操作" })).data;
+  await t.test("MCP properties：工具参数发现、节点版本保护、边读写与清空", async () => {
+    const update = catalog.find(entry => entry.name === "update_node");
+    assert.ok(update);
+    assert.deepEqual(update.inputSchema.required, ["id", "revision"]);
+    for (const name of ["create_node", "update_node", "create_edge", "update_edge"])
+      assert.equal(catalog.find(entry => entry.name === name).inputSchema.properties.properties.type, "object");
+    const db = (await tool("create_kb", { name: "MCP 属性" })).data;
+    const parent = (await tool("create_node", { kbId: db.id, title: "属性父", properties: { priority: 1 } })).data;
+    assert.deepEqual(parent.properties, { priority: 1 });
+    const changed = await tool("update_node", { id: parent.id, revision: 0, properties: { nested: { tags: ["中文", null] } } });
+    assert.equal(changed.data.revision, 1);
+    assert.deepEqual((await tool("get_node", { id: parent.id })).data.properties, changed.data.properties);
+    assert.equal((await tool("update_node", { id: parent.id, revision: 0, properties: {} })).data.error.code, "REVISION_CONFLICT");
+    const child = (await tool("create_node", { kbId: db.id, title: "属性子", parentId: parent.id })).data;
+    const edge = (await tool("create_edge", { type: "CHILD_OF", source: child.id, target: parent.id, properties: { confidence: 0.8 } })).data;
+    assert.deepEqual((await tool("get_edge", { id: edge.id })).data.properties, { confidence: 0.8 });
+    assert.deepEqual((await tool("update_edge", { id: edge.id, properties: {} })).data.properties, {});
+    assert.equal((await tool("update_edge", { id: edge.id, properties: [] })).data.error.code, "INVALID_PROPERTIES");
+    assert.deepEqual((await tool("update_node", { id: parent.id, revision: 1, properties: {} })).data.properties, {});
+  });
   const a = (await tool("create_node", { kbId: kb.id, title: "父" })).data;
   const b = (
     await tool("create_node", { kbId: kb.id, title: "子", parentId: a.id })

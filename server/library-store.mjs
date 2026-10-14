@@ -9,7 +9,7 @@ import { parseReference } from "./node-links.mjs";
 
 const exists = async path => { try { await access(path); return true; } catch (e) { if (e.code === "ENOENT") return false; throw e; } };
 const missing = () => new ToolError("NOT_FOUND", "对象不存在或目标知识库未加载", "导入目标知识库，或刷新列表核对 ID", 404);
-const writes = new Set(["rename_kb", "delete_kb", "create_node", "update_doc", "rename_node", "delete_node", "restore", "create_edge", "update_edge", "delete_edge", "upload_asset", "import_kb", "merge_concepts"]);
+const writes = new Set(["rename_kb", "delete_kb", "create_node", "update_doc", "rename_node", "update_node", "delete_node", "restore", "create_edge", "update_edge", "delete_edge", "upload_asset", "import_kb", "merge_concepts"]);
 
 // Only the active library holds a Kùzu connection. The catalog is a rebuildable
 // location/index file, never a second graph or a source of document content.

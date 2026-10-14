@@ -148,7 +148,9 @@ export async function startApi(tools, token, port = 0) {
         operation = "get_node";
         input = { id: node[1] };
       } else if (node && req.method === "PATCH") {
-        operation = body.markdown === undefined ? "rename_node" : "update_doc";
+        if (body.markdown !== undefined && (body.properties !== undefined || body.title !== undefined))
+          throw new ToolError("INVALID_INPUT", "正文与节点属性请分别提交", "先保存正文取得新 revision，再 PATCH title/properties");
+        operation = body.markdown === undefined ? "update_node" : "update_doc";
         input = { ...body, id: node[1] };
       } else if (node && req.method === "DELETE") {
         operation = "delete_node";

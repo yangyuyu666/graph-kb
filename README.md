@@ -1,6 +1,6 @@
 # graph-kb
 
-基于知识图谱的本地知识管理应用，当前为 **0.2.1 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
+基于知识图谱的本地知识管理应用，当前为 **0.2.2 本地 MVP**。依据见 [产品大纲](docs/outline.md) 与 `mockups/`，结果与阻塞见 [PROGRESS.md](PROGRESS.md)，未确认项见 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)。
 
 ## 开发运行
 
@@ -79,8 +79,8 @@ Milkdown → REST / MCP → LibraryStore（知识库定位与跨库查询）
 | POST | /api/kbs/{id}/import、/export | 导入 / 导出 |
 | POST | /api/databases/{id}/export | 整库备份，保留 ID、附件和回收站 |
 | POST | /api/databases/import | body 为 {data, mode}，迁移恢复或作为副本 |
-| POST | /api/nodes | 创建，支持 parentId 和 kind |
-| GET / PATCH / DELETE | /api/nodes/{id} | 读取 / 保存正文或重命名 / 软删除 |
+| POST | /api/nodes | 创建，支持 parentId、kind 和 properties |
+| GET / PATCH / DELETE | /api/nodes/{id} | 读取 / 保存正文或更新 title、properties / 软删除 |
 | POST | /api/edges | 创建并校验关系 |
 | GET / PATCH / DELETE | /api/edges/{id} | 读取 / 原子修正 / 删除关系 |
 | GET | /api/nodes/{id}/neighbors | 1–3 跳，type 筛选，含后台 Concept |
@@ -93,6 +93,13 @@ Milkdown → REST / MCP → LibraryStore（知识库定位与跨库查询）
 | GET | /api/connection | 鉴权后读取本地连接和 MCP 启动配置 |
 
 关系 ID 为 TYPE:sourceUUID:targetUUID，放入 URL 时编码。文档保存/重命名携带 revision。错误含 code、message、suggestion；过期保存 409，已删除文档 410。
+
+**自定义属性（0.2.2）：** 每个节点和两种边都有 `properties` JSON 对象，默认 `{}`，直接存入其所属图库（内部以 JSON 字符串保存），不是外部指针。支持字符串、有限数值、布尔值、null、数组和嵌套对象；顶层必须是对象，序列化后最多 64 KiB、嵌套深度最多 16。省略字段保留原值，传对象整体替换，传 `{}` 清空；不会与 title、kind、label 等核心字段合并。非法值返回 `INVALID_PROPERTIES`。
+
+- 节点创建：POST `/api/nodes` 可带 `"properties":{"priority":2}`。修改前 GET `/api/nodes/{id}` 取得 revision，再 PATCH 同一路径，body 为 `{"revision":3,"properties":{"priority":2,"source":"人工录入"}}`；可同时传 title，成功递增 revision。正文与属性分开提交，每次使用最新版本，冲突返回 409。
+- 边创建和 PATCH `/api/edges/{编码后的关系ID}` 可带 `{"properties":{"confidence":0.95}}`；可与 label 一同修改，无 revision，按最后一次成功写入生效。自动维护平行边、重复创建已有边且省略 properties 时保留原值。
+- MCP 共 35 项工具，新增 `update_node({id,revision,title?,properties?})`（至少提供 title/properties 一项）；`create_node`、`create_edge`、`update_edge` 增加 properties 参数，旧 rename_node 保持兼容。get_node/list_nodes/get_graph/get_edge/query_path 返回完整属性；query_neighbors 中 properties 属于邻居节点，edgeProperties 属于该次遍历的边。
+- 旧库自动逐表升级；旧备份缺失属性时按 `{}` 处理。JSON、Markdown ZIP 的 graph.json、整库迁移/副本及回收站恢复保留属性。属性内部的 ID/链接只是普通数据，复制导入不自动改写；已存在的同名隐藏概念被复用时保留已有节点属性。属性不自动成为图关系，也不参与当前全文检索、筛选或云抽取；暂未增加界面属性编辑面板。迁移属性数据请使用 0.2.2 或更新版本。
 
 **图谱与边文字（0.2.1）：** 图谱采用浅色文档卡片和按连接数分层的居中布局，顶部边长滑块及 − / ＋ 可调整间距（100–400），按知识库在当前设备记忆；调整时保留缩放，超出画布可点“适应画布”。 图谱中右键线条 →“编辑边文字”→ 保存，第一行显示在线条旁（过长省略），第二行起仅在点击边弹出的小窗口中显示；编辑框支持换行；目录中也可右键节点 → 管理关系 → 修改。每条边有可选 `label` 属性，最多 200 字符，留空清除；仅为注释，不改变 CHILD_OF / SIBLING_OF 结构语义。旧库启动时自动补充属性，原关系和正文保留。JSON 导入导出、Markdown ZIP 中的 graph.json、回收站恢复均保留标签。
 

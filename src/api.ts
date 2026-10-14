@@ -33,6 +33,7 @@ export interface KnowledgeBase {
   updatedAt?: string;
 }
 export interface PageNode {
+  properties: Record<string, unknown>;
   id: string;
   kbId: string;
   title: string;
@@ -42,6 +43,7 @@ export interface PageNode {
   updatedAt: string;
 }
 export interface GraphEdge {
+  properties: Record<string, unknown>;
   id: string;
   label: string;
   source: string;

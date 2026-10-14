@@ -319,6 +319,14 @@ try {
     "docs/evidence/tauri-settings.png",
     Buffer.from(settingsShot.data, "base64"),
   );
+  const propertyNode = await main.evaluate(`qaRequest('/api/nodes/${linked.id}', 'PATCH', {revision:0, properties:{priority:2,nested:{tags:['desktop']}}})`);
+  assert.equal(propertyNode.revision, 1);
+  assert.deepEqual(propertyNode.properties, { priority: 2, nested: { tags: ["desktop"] } });
+  const propertyEdge = await main.evaluate(`qaRequest('/api/edges/${encodeURIComponent(labeledGraph.edges[0].id)}', 'PATCH', {properties:{confidence:0.95}})`);
+  assert.deepEqual(propertyEdge.properties, { confidence: 0.95 });
+  const propertyBackup = await main.evaluate(`qaRequest('/api/databases/${saved.kbId}/export', 'POST', {})`);
+  assert.deepEqual(propertyBackup.nodes.find(n => n.id === linked.id).properties, propertyNode.properties);
+  assert.deepEqual(propertyBackup.edges.find(e => e.id === propertyEdge.id).properties, propertyEdge.properties);
   // Close all native windows via their actual Tauri permissions and lifecycle.
   await main.evaluate(
     `window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'doc-${linked.id}'})`,
@@ -331,7 +339,7 @@ try {
     `setTimeout(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'main'}), 100)`,
   );
   console.log(
-    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, database export/copy import, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
+    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, node/edge properties and database export, database copy import, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
   );
 } finally {
   for (const connection of connections) connection.close();

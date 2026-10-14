@@ -75,6 +75,18 @@ MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动�
 
 `update_edge` 只要求 id，省略的 type/source/target/label 保持原值；`label:""` 清除文字。只改文字时不改变边 ID、方向或节点正文。创建边时也可在 create_edge 中传 label；对已有边重复创建而省略 label 时保留原文字。get_edge、get_graph 和 query_path 返回 label。边没有文档 revision 并发保护，同一标签的并发修改按最后一次成功写入为准。
 
+### 自定义属性 properties（0.2.2）
+
+节点及 CHILD_OF / SIBLING_OF 均带 properties 对象，默认 {}，直接保存在所属图库，不是外部指针。顶层只接受 JSON 对象，内部可含字符串、有限数值、布尔值、null、数组和嵌套对象；JSON UTF-8 最多 64 KiB，深度最多 16。非法输入返回 INVALID_PROPERTIES。省略保留现值；传入对象整体替换，不递归合并；{} 清空。自定义键不会覆盖核心字段。
+
+创建节点：create_node({kbId,title,parentId?,properties:{priority:2}})。修改节点先 get_node，再 update_node({id,revision,properties:{priority:3,source:"人工录入"}})，也可同时传 title；至少提供 title/properties 一项。成功返回新 revision，冲突返回 REVISION_CONFLICT。update_doc 和 rename_node 保留已有属性。正文与属性分开提交，第二次须使用新的 revision。
+
+创建/修改边：create_edge({type,source,target,properties:{confidence:0.95}}) 或 update_edge({id,properties:{confidence:0.9}})，可同时更新 label。省略 properties 的自动维护和重复创建保留原值；修改类型/端点携带原属性，失败回滚。边仍没有 revision，并发按最后一次成功写入生效。
+
+get_node、list_nodes、get_graph、get_edge 和 query_path 返回完整 properties；query_neighbors 返回的 properties 是邻居节点属性，edgeProperties 是遍历边属性（此工具按节点去重，不是完整边列表）。旧库升级、重启、JSON/Markdown ZIP 导出、整库迁移/副本、回收站恢复都保留数据；旧格式缺失属性按 {} 处理。属性内 ID/链接是普通数据，复制时不自动重写；复用已存在的隐藏概念时保留其原属性，合并概念时目标节点属性不变，来源节点属性留在回收站快照。
+
+当前自定义属性通过 API/MCP 读写，未增加界面属性面板，不参与全文搜索或图结构推断。REST POST /api/nodes 与 POST /api/edges 支持 properties；PATCH /api/nodes/{id} 支持 revision + title/properties（正文另行提交），PATCH /api/edges/{编码ID} 支持 properties。工具共 35 项，更新客户端工具目录后可发现 update_node 及新增参数，固定连接 JSON 不变。
+
 ### 删除与恢复
 
 ```json

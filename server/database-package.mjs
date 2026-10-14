@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
 import { rewriteReferences } from "./node-links.mjs";
+import { propertiesObject } from "./properties.mjs";
 
 const invalid = () => new ToolError("INVALID_DATABASE", "整库备份内容无效或不完整", "请选择应用导出的 .graphkb.json 文件");
 const kinds = ["Page", "Tag", "File", "Person", "Task", "Concept"];
@@ -52,6 +53,7 @@ export function validateDatabase(data) {
       take(n.id); nodeIds.add(n.id);
       if (n.kbId !== data.id || !kinds.includes(n.kind) || !Number.isSafeInteger(n.revision) || n.revision < 0 || !Number.isFinite(Date.parse(n.updatedAt)) || typeof n.conceptKey !== "string" || !docs.has(n.id)) throw invalid();
       requireText(n.title, "节点标题");
+      propertiesObject(n.properties);
     }
   }
   function checkEdges(edges, active) {
@@ -59,6 +61,7 @@ export function validateDatabase(data) {
     const seen = new Set();
     for (const e of edges) {
       requireId(e.source); requireId(e.target); edgeLabel(e.label ?? "");
+      propertiesObject(e.properties);
       if (!["CHILD_OF", "SIBLING_OF"].includes(e.type) || e.source === e.target || (active && (!nodeIds.has(e.source) || !nodeIds.has(e.target)))) throw invalid();
       const pair = e.type === "SIBLING_OF" ? [e.source, e.target].sort() : [e.source, e.target];
       const key = `${e.type}:${pair.join(":")}`;
@@ -120,7 +123,7 @@ export async function writeDatabase(tools, data) {
   for (const n of data.nodes) await tools.insertNode(n);
   for (const e of [...data.edges].sort((a, b) => (a.type === "CHILD_OF" ? 0 : 1) - (b.type === "CHILD_OF" ? 0 : 1))) {
     await tools.validateEdge(e.type, e.source, e.target);
-    await tools.writeEdge(e.type, e.source, e.target, e.label ?? "");
+    await tools.writeEdge(e.type, e.source, e.target, e.label ?? "", propertiesObject(e.properties));
   }
   for (const d of data.documents) await writeFile(join(store.root, "documents", `${d.id}.md`), d.markdown);
   for (const t of data.trash) {

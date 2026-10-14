@@ -1,6 +1,17 @@
 # 开发进度
 
-更新：2026-10-14。项目版本：0.2.1。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-14。项目版本：0.2.2。工作目录：C:/Users/27783/graph-kb。
+
+## 节点与边自定义属性（0.2.2）
+
+- Node、CHILD_OF、SIBLING_OF 增加 properties，默认 `{}`。API/MCP 暴露 JSON 对象，Kùzu 在各自记录中用 JSON 字符串存储；没有独立属性文件或共享指针。旧库按表检查并补列，可恢复部分升级，不覆盖已有值。
+- 支持嵌套 JSON，顶层必须为对象，序列化后最多 64 KiB、深度最多 16；非法值返回 INVALID_PROPERTIES。省略保留原值，传对象整体替换，`{}` 清空，键不会混入核心字段。属性中的 ID/链接是普通数据，副本导入不自动改写。
+- REST 创建节点/边可带 properties；PATCH 节点可按 revision 更新 title/properties，成功递增版本并更新日期；正文和属性分别提交。MCP 新增 update_node，create_node/create_edge/update_edge 增加参数，共 35 项工具，rename_node 保持兼容。边沿用无 revision、最后成功写入生效的规则。
+- 节点/边详情、列表、图谱、路径和邻居查询返回属性；邻居结果以 properties 表示节点属性、edgeProperties 表示遍历边属性。正文保存、重命名、结构调整及自动维护已有边保留属性。JSON、Markdown ZIP 清单、整库迁移/副本、回收站恢复携带属性；旧格式缺失字段兼容 `{}`。已有隐藏概念复用/合并不覆盖目标节点属性。
+- 本次仅增加数据扩展能力及 API/MCP，未增加 UI 属性面板、属性检索或自动建边规则。完整调用例子见 README 与 server/mcp-guide.md。
+- 验证：后端 54 项、界面 14 项、独立运行时 1 项通过；新增实际 Kùzu 升级/中断重试、嵌套属性持久化、版本冲突、非法输入无部分写入、JSON/整库迁移与副本、回收站、REST 和真实 MCP stdio 验证。发布版和安装版均在隔离数据、空 PATH 下通过原生验证，覆盖节点/边属性读写和整库导出。
+- 2026-10-14 已更新原安装目录 `.tools/installed-smoke`，安装器退出 0，文件版本 0.2.2；16 个服务/指南文件与源码一致，主程序仅有预期 NSIS 标记差异。直接检查安装版 MCP，初始化版本 0.2.2、35 项工具、properties 参数与完整指南均正确。原应用当时未运行，实际数据未写入测试内容；再次打开时自动升级各库。固定 MCP JSON 不变，客户端须刷新工具目录以发现新工具/参数。
+
 
 ## 图谱视觉与多行边文字（0.2.1）
 
@@ -42,7 +53,7 @@
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.2.1** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
+已生成并实际安装 Windows x64 **0.2.2** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -72,6 +83,7 @@ Tag、File、Person、Task 支持创建、编辑及图关系，共享文档能�
 | docs/outline.md、mockups/ | 产品大纲与 5 张原始设计图 |
 | src/library.ts | 首页、全局搜索、回收站 |
 | src/workspace.ts | 目录、Cytoscape 图谱与间距控制、边文字弹窗、关系管理、导入导出 |
+| server/properties.mjs | 自定义属性 JSON 校验、大小/深度限制与数据库序列化 |
 | src/main.ts、src/document-extras.ts | Milkdown、独立窗口、稳定引用、附件、媒体、相关文档 |
 | src/api.ts、src/settings.ts、src/ui.ts、src/style.css | 共用 REST、云配置、对话框、样式 |
 | server/graph-store.mjs | 嵌入 Kùzu、磁盘文档、文件提交日志与故障恢复 |
@@ -116,7 +128,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.2.1_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.1_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.2.2_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.2_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 

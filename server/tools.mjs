@@ -2,6 +2,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { ToolError, requireId, requireText, edgeLabel } from "./errors.mjs";
 import { parseEntities } from "./cloud-extractor.mjs";
 import { mvpOperations, mvpMethods } from "./operations.mjs";
+import { encodeProperties, decodeProperties, propertiesObject } from "./properties.mjs";
 
 // Shared write boundary for UI/REST and future MCP adapters. No raw Cypher endpoint.
 export class KnowledgeTools {
@@ -104,18 +105,20 @@ export class KnowledgeTools {
   }
   async listNodes({ kbId }) {
     await this.mustKb(kbId);
-    return this.store.query(
-      "MATCH (n:Node {kbId: $kbId}) WHERE n.kind <> 'Concept' RETURN n.id AS id, n.title AS title, n.kind AS kind, n.updatedAt AS updatedAt ORDER BY n.title",
+    const nodes = await this.store.query(
+      "MATCH (n:Node {kbId: $kbId}) WHERE n.kind <> 'Concept' RETURN n.id AS id, n.title AS title, n.kind AS kind, n.updatedAt AS updatedAt, n.properties AS properties ORDER BY n.title",
       { kbId },
     );
+    return nodes.map((n) => ({ ...n, properties: decodeProperties(n.properties) }));
   }
   async insertNode(node) {
     await this.store.query(
-      "CREATE (:Node {id: $id, kbId: $kbId, kind: $kind, title: $title, conceptKey: $conceptKey, updatedAt: $updatedAt, revision: $revision})",
-      node,
+      "CREATE (:Node {id: $id, kbId: $kbId, kind: $kind, title: $title, conceptKey: $conceptKey, updatedAt: $updatedAt, revision: $revision, properties: $properties})",
+      { ...node, properties: encodeProperties(node.properties === undefined ? {} : node.properties) },
     );
   }
-  async createNode({ kbId, title, parentId, kind = "Page" }) {
+  async createNode({ kbId, title, parentId, kind = "Page", properties = {} }) {
+    properties = propertiesObject(properties);
     await this.mustKb(kbId);
     if (!["Page", "Tag", "File", "Person", "Task"].includes(kind))
       throw new ToolError(
@@ -140,6 +143,7 @@ export class KnowledgeTools {
       conceptKey: "",
       updatedAt: new Date().toISOString(),
       revision: 0,
+      properties,
     };
     await this.store.transaction([{ id: node.id, markdown: "" }], async () => {
       await this.insertNode(node);
@@ -358,16 +362,21 @@ export class KnowledgeTools {
       }
     }
   }
-  async writeEdge(type, source, target, label) {
+  async writeEdge(type, source, target, label, properties) {
     if (type === "SIBLING_OF" && source > target)
       [source, target] = [target, source];
+    const assignments = [];
+    const params = { source, target };
+    if (label !== undefined) { assignments.push("r.label = $label"); params.label = label; }
+    if (properties !== undefined) { assignments.push("r.properties = $properties"); params.properties = encodeProperties(properties); }
     const [edge] = await this.store.query(
-      `MATCH (a:Node {id: $source}), (b:Node {id: $target}) MERGE (a)-[r:${type}]->(b) ${label === undefined ? "" : "SET r.label = $label"} RETURN coalesce(r.label, '') AS label`,
-      { source, target, ...(label === undefined ? {} : { label }) },
+      `MATCH (a:Node {id: $source}), (b:Node {id: $target}) MERGE (a)-[r:${type}]->(b) ${assignments.length ? "SET " + assignments.join(", ") : ""} RETURN coalesce(r.label, '') AS label, r.properties AS properties`,
+      params,
     );
-    return { type, source, target, id: `${type}:${source}:${target}`, label: edge.label };
+    return { type, source, target, id: `${type}:${source}:${target}`, label: edge.label, properties: decodeProperties(edge.properties) };
   }
-  async createEdge({ type, source, target, label }) {
+  async createEdge({ type, source, target, label, properties }) {
+    if (properties !== undefined) properties = propertiesObject(properties);
     if (label !== undefined) label = edgeLabel(label);
     await this.validateEdge(type, source, target);
     const a = await this.mustNode(source),
@@ -390,7 +399,7 @@ export class KnowledgeTools {
           { source },
         );
       }
-      return this.writeEdge(type, source, target, label);
+      return this.writeEdge(type, source, target, label, properties);
     });
   }
   async neighbors({ id, hops = 1, type }) {
@@ -414,12 +423,12 @@ export class KnowledgeTools {
       const next = [];
       for (const current of frontier)
         for (const row of await this.store.query(
-          "MATCH (a:Node {id: $id})-[r]-(b:Node) RETURN b.id AS id, b.title AS title, b.kind AS kind, label(r) AS type",
+          "MATCH (a:Node {id: $id})-[r]-(b:Node) RETURN b.id AS id, b.title AS title, b.kind AS kind, b.properties AS properties, label(r) AS type, r.properties AS edgeProperties",
           { id: current },
         )) {
           if ((type && row.type !== type) || seen.has(row.id)) continue;
           seen.add(row.id);
-          result.push({ ...row, distance });
+          result.push({ ...row, properties: decodeProperties(row.properties), edgeProperties: decodeProperties(row.edgeProperties), distance });
           next.push(row.id);
         }
       frontier = next;
