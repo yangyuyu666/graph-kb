@@ -1,6 +1,6 @@
 # 开发进度
 
-更新：2026-10-13。项目版本：0.2.1。工作目录：C:/Users/27783/graph-kb。
+更新：2026-10-14。项目版本：0.2.1。工作目录：C:/Users/27783/graph-kb。
 
 ## 图谱视觉与多行边文字（0.2.1）
 
@@ -9,7 +9,7 @@
 - 边文字改为多行编辑框：第一行显示在线条上，超长省略；第二行起不显示在画布上。左键点击边或其文字，打开小窗口查看完整原文，支持继续编辑、关闭及 Esc。空文字边仍可点击；文字以纯文本显示，不执行 HTML。右键边编辑和目录管理关系入口保留。
 - 延用原有 `label` 属性及 200 字符上限、首尾空白去除规则，不修改图结构或增加新字段。API/MCP 可使用 `\n` 写入多行；完整文字参与 JSON 导入导出和回收站恢复，PNG 仅显示首行。使用手册同步更新。
 - 验证：后端 47 项通过，多行文字覆盖实际 Kùzu 重开、JSON 往返和回收站恢复；14 项浏览器用例全部通过（全套首次 13 项通过，一项因新增 output 造成测试定位歧义，修正定位后所属 3 项全部通过）。新增实际鼠标点击边、编辑多行、Esc、刷新保留、滑块改变真实节点距离且不改变缩放、设置记忆验证。独立运行时 1 项通过；发布版程序在隔离数据、空 PATH 下通过 Tauri 验证，包含多行保存和左键全文弹窗。
-- 已构建 Windows x64 0.2.1 NSIS 安装包。**部署待办：检测到旧版应用仍在运行，等待用户保存关闭确认后更新原目录；未结束用户应用、未修改实际知识库。**
+- 已构建 Windows x64 0.2.1 NSIS 安装包。**2026-10-14 已部署**：用户确认保存关闭后更新 `.tools/installed-smoke`，安装器退出 0，文件版本 0.2.1。15 个服务/指南文件与源码哈希一致，主程序仅有预期 NSIS 标记差异；安装版空 PATH、隔离数据验收通过。实际知识库未改动，应用保持关闭，用户重新打开即可使用。
 
 实际界面：[图谱](docs/evidence/graph-redesign.png)、[边文字窗口](docs/evidence/edge-details.png)。安装包：[Graph KB 0.2.1](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.1_x64-setup.exe)。
 
@@ -42,7 +42,7 @@
 
 已从 Phase 0 骨架扩展到大纲第 5 节已确认的本地 MVP。用户确认的 Cytoscape.js、图谱/目录切换、可折叠层级目录、在具体节点下创建子节点均已落地。详细逐项映射见 [MVP 验收表](docs/MVP_ACCEPTANCE.md)；候选池和未定产品决策见 [开放问题](OPEN_QUESTIONS.md)。不把候选池、Beta、商店发布称为已完成。
 
-已生成并实际安装 Windows x64 **0.2.0** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
+已生成并实际安装 Windows x64 **0.2.1** 测试包，安装目录为 [.tools/installed-smoke](.tools/installed-smoke/graph-kb.exe)。默认数据根目录标识保持不变，内部升级为独立知识库目录。原生测试使用 GRAPH_KB_DATA_DIR 指向独立 QA 目录；实际数据迁移已另行完成核对。用户正常应用保持关闭，重新打开即可使用。沿用已有 Codex 固定连接配置。
 
 ## 本次交互修订
 
@@ -116,7 +116,7 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 ## 桌面产物
 
-安装包：[Graph KB_0.2.0_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.0_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
+安装包：[Graph KB_0.2.1_x64-setup.exe](src-tauri/target/release/bundle/nsis/Graph%20KB_0.2.1_x64-setup.exe)，约 29 MiB；校验值及验收见 [windows-package.json](docs/evidence/windows-package.json)。所有已安装服务文件与源码逐项哈希一致，主程序通过 release 对比（仅预期 NSIS 标记差异）。安装后程序：[graph-kb.exe](.tools/installed-smoke/graph-kb.exe)。包含 Node、Kùzu、服务、前端、完整 MCP 指南、固定连接支持、边标签及许可证；使用者无需 Rust/Node。保持旧 app identifier 以兼容现有数据目录。
 
 未签名、未公开发行，未执行商店上架。WebView2 在本机已有，缺失环境仍待验收。仅测试进程开启 CDP 调试端口，日常运行不开启。
 
@@ -124,7 +124,6 @@ Kùzu 官方仓库已归档，是长期维护风险；LadybugDB 为候选，未�
 
 | 阻塞 / 未验项 | 影响与处理 |
 |---|---|
-| 0.2.1 覆盖安装待确认 | 包与隔离验收已完成；旧版仍运行，等用户保存关闭后更新，避免丢失草稿 |
 | 无用户选定的真实模型/API Key | DeepSeek、GPT、Gemini、MiMo 协议已模拟验证，但真实抽取质量、费用、速度未验。在应用设置填写即可；不用在聊天发 Key |
 | 无签名证书、商店账户与干净 Windows VM | 无法完成商店分发和跨机器发行验收；不阻塞本机 MVP |
 | 无已确认的规模/性能指标 | 全文为本地扫描、顶级平行边为两两建边，只有功能规模测试；大图、大批附件、断电、跨平台未验收 |

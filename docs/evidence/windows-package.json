@@ -1,9 +1,9 @@
 {
-  "date": "2026-10-13",
-  "version": "0.2.0",
-  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.0_x64-setup.exe",
-  "bytes": 30420643,
-  "sha256": "409b67734933c1442214434204655ed7d6694f7d0f9074d3e36b8a394268eb6f",
+  "date": "2026-10-14",
+  "version": "0.2.1",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.1_x64-setup.exe",
+  "bytes": 30432021,
+  "sha256": "ac0fa6e3960157296d7301479bd1efb11b50a76c35c893f0bba893101f1a95b6",
   "platform": "windows-x64",
   "signed": false,
   "installerExitCode": 0,
@@ -12,12 +12,13 @@
   "installedExecutableComparison": "Identical to release exe except expected NSIS bundle marker",
   "nativeVerification": [
     "Installed executable: isolated graph and WebView data, empty PATH, temporary working directory, clean exit",
-    "Database export and independent copy import, edge labels, trash restore, inline editor, node menus, native links"
+    "Database export and independent copy import, edge labels, trash restore, inline editor, node menus, native links",
+    "0.2.1 installed executable: multiline edge label saves, only first line on canvas, left-click full text dialog"
   ],
   "tests": {
     "backend": 47,
-    "ui": 13,
-    "uiScope": "Full browser UI including database import/export, collision rejection, copy and cross-library references",
+    "ui": 14,
+    "uiScope": "Full browser coverage including edge length adjustment/persistence and multiline details; repaired status locator verified in workspace rerun",
     "standaloneRuntime": 1,
     "migration": "Shared graph split, deleted KB restoration, missing-document failure/retry, independent physical DBs, workspace lock, catalog rebuild",
     "recovery": "Post-commit file promotion failure recovers journal before database export"
@@ -36,7 +37,7 @@
     "environmentKeys": [
       "GRAPH_KB_CONNECTION_FILE"
     ],
-    "note": "Reload MCP tool catalog for 34 tools; user application left closed after migration"
+    "note": "Fixed MCP configuration unchanged; user application left closed after update"
   },
   "cloudProviderLiveTest": "not run: no user API key or model configured"
 }
