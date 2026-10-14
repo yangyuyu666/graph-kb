@@ -193,6 +193,7 @@ try {
   const point = await main.evaluate(
     `(() => { const canvas=document.querySelector('#graph-canvas');const p=canvas._cyreg.cy.nodes()[0].renderedPosition();const r=canvas.getBoundingClientRect();return {x:r.left+p.x,y:r.top+p.y}; })()`,
   );
+  await main.evaluate(`window.qaNativeMenus = []; window.addEventListener('contextmenu', event => window.qaNativeMenus.push(event.defaultPrevented));`);
   await main.send("Input.dispatchMouseEvent", {
     type: "mousePressed",
     button: "right",
@@ -208,6 +209,8 @@ try {
     ...point,
   });
   await until(() => main.evaluate('!!document.querySelector("[role=menu]")'));
+  assert.deepEqual(await main.evaluate('window.qaNativeMenus'), [true]);
+  assert.equal(await main.evaluate(`document.querySelector('[role=menuitem]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))`), false);
   assert.equal((await targets()).length, 2);
   const menuShot = await main.send("Page.captureScreenshot", { format: "png" });
   await writeFile(
@@ -236,6 +239,7 @@ try {
       clickCount: 1, ...edgePoint,
     });
   await until(() => main.evaluate('!!document.querySelector("[role=menuitem][aria-label=编辑边文字]")'));
+  assert.deepEqual(await main.evaluate('window.qaNativeMenus'), [true, true, true]);
   await main.evaluate('document.querySelector("[role=menuitem][aria-label=编辑边文字]").click()');
   await until(() => main.evaluate('!!document.querySelector("dialog textarea")'));
   await main.evaluate(`document.querySelector('dialog textarea').value='原生边文字\\n原生详情第二行'; document.querySelector('dialog form').requestSubmit()`);

@@ -21,6 +21,9 @@ export function contextMenu(
   const menu = element("div", undefined, "node-context-menu");
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", `${title} 操作`);
+  // Cytoscape opens this overlay on mouseup, before WebView2 dispatches
+  // contextmenu. That event can target the overlay instead of the canvas.
+  menu.addEventListener("contextmenu", (event) => event.preventDefault());
   const abort = new AbortController();
   const close = () => {
     abort.abort();

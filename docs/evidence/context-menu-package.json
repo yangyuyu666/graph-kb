@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-14",
+  "version": "0.2.4",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.4_x64-setup.exe",
+  "bytes": 30422741,
+  "sha256": "67f73f9417a567151defe66a0f58d48c33dd65e06dea78e2e938d0cae8decc8f",
+  "buildExitCode": 0,
+  "uiTests": 4,
+  "nativeVerification": "Release executable, isolated data, empty PATH; node and edge contextmenu cancellation verified",
+  "deployment": "Installed after user save-and-close confirmation",
+  "userDataModified": false,
+  "installedVersion": "0.2.4",
+  "installerExitCode": 0,
+  "installedServiceFilesMatched": 16,
+  "installedNativeVerification": "Passed with isolated data and empty PATH"
+}

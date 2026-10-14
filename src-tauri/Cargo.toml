@@ -1,6 +1,6 @@
 [package]
 name = "graph-kb"
-version = "0.2.3"
+version = "0.2.4"
 description = "Graph-first local knowledge base — Phase 0"
 edition = "2021"
 license = "Apache-2.0"

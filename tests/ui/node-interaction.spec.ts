@@ -100,11 +100,29 @@ test("图谱右键弹菜单而不打开文档；左键仍开独立窗口", async
     const r = el.getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y };
   }, a.id);
+  await page.evaluate(() => {
+    (window as any).nativeMenus = [];
+    window.addEventListener("contextmenu", (event) => {
+      (window as any).nativeMenus.push(event.defaultPrevented);
+    });
+  });
   await page.mouse.click(point.x, point.y, { button: "right" });
+  await expect(page.getByRole("menu")).toBeVisible();
+  expect(await page.evaluate(() => (window as any).nativeMenus)).toEqual([true]);
+  // Windows can retarget the delayed native event to the newly focused item.
+  expect(await page.getByRole("menuitem").first().evaluate((item) =>
+    item.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })),
+  )).toBe(false);
+  await page.getByRole("menuitem").first().click({ button: "right" });
+  expect(await page.evaluate(() => (window as any).nativeMenus.every(Boolean))).toBe(true);
   await expect(page.getByRole("menu")).toBeVisible();
   expect(context.pages()).toHaveLength(1);
   await page.screenshot({ path: "docs/evidence/graph-context-menu.png" });
   await page.keyboard.press("Escape");
+  // Ordinary editor/browser context menus must not be globally disabled.
+  expect(await page.locator("input[type=search]").first().evaluate((input) =>
+    input.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })),
+  )).toBe(true);
   const popup = page.waitForEvent("popup");
   await page.mouse.click(point.x, point.y);
   const doc = await popup;
