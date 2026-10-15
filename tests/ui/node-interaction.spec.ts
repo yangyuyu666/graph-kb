@@ -75,7 +75,7 @@ test("目录单击内联编辑、拖拽分栏、草稿保护和右键菜单", as
     .getByRole("button", { name: a.title, exact: true })
     .click({ button: "right" });
   await expect(page.getByRole("menu")).toBeVisible();
-  await expect(page.getByRole("menuitem")).toHaveCount(6);
+  await expect(page.getByRole("menuitem")).toHaveCount(7);
   await page.screenshot({ path: "docs/evidence/node-context-menu.png" });
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);

@@ -99,6 +99,6 @@ test("浅色卡片图谱：边长可调且记忆，多行边文字只显示首�
   await page.keyboard.press("Home");
   for (let i = 0; i < 6; i++) await page.getByRole("button", { name: "增加边长", exact: true }).click();
   await page.getByRole("button", { name: "适应画布", exact: true }).click();
-  await canvas.evaluate((el: any) => el._cyreg.cy.nodes().filter((n: any) => n.data("label") === "codeQL").select());
+  await canvas.evaluate((el: any) => { el._cyreg.cy.nodes().filter((n: any) => n.data("label") === "codeQL").select(); });
   await page.screenshot({ path: "docs/evidence/graph-redesign.png" });
 });

@@ -1,4 +1,5 @@
 import { contextMenu, closeContextMenu } from "./context-menu";
+import { branchLayout, graphTitle } from "./graph-layout";
 import { mountDocument } from "./document-view";
 import cytoscape, { type Core } from "cytoscape";
 import { zipSync, strToU8 } from "fflate";
@@ -32,6 +33,7 @@ export async function renderWorkspace(
     selected: string | undefined,
     cy: Core | undefined;
   const collapsed = new Set<string>();
+  const graphFilter = { center: "", scope: "neighbors", hops: "1", edgeType: "" };
   const edgeLengthKey = `graph-kb:edge-length:${kb.id}`;
   let edgeLength = 220;
   try {
@@ -170,7 +172,7 @@ export async function renderWorkspace(
     graphTab.setAttribute("aria-selected", String(view === "graph"));
     if (view === "tree") renderTree();
     else renderGraph();
-    if (appliedSearch)
+    if (appliedSearch && view === "tree")
       status.textContent = `搜索“${appliedSearch}”：找到 ${filtered().length} 个节点（标题或正文匹配${view === "tree" ? "，目录保留父级路径" : ""}）`;
     else if (view === "tree") status.textContent = `${filtered().length} 个节点`;
   }
@@ -401,6 +403,17 @@ export async function renderWorkspace(
           ),
       },
       { label: "管理关系", icon: "◇", run: () => relations(node) },
+      { label: "只看此节点及全部子节点", icon: "⌘", run: () => {
+        graphFilter.center = node.id;
+        graphFilter.scope = "descendants";
+        graphFilter.edgeType = "";
+        clearTimeout(timer);
+        ++searchVersion;
+        search.value = appliedSearch = kind.value = "";
+        matches = undefined;
+        searchForm.setAttribute("aria-busy", "false");
+        switchView("graph");
+      } },
       {
         label: "仅删除当前节点",
         icon: "▱",
@@ -608,6 +621,7 @@ export async function renderWorkspace(
     panel.className = "workspace-panel graph-layout";
     const controls = e("div", undefined, "graph-controls");
     const center = e("select"),
+      scope = e("select"),
       hops = e("select"),
       edgeType = e("select"),
       target = e("select");
@@ -616,14 +630,23 @@ export async function renderWorkspace(
       new Option("全库图谱", ""),
       ...graph.nodes.map((n) => new Option(n.title, n.id)),
     );
+    if (!graph.nodes.some((n) => n.id === graphFilter.center)) graphFilter.center = "";
+    center.value = graphFilter.center;
+    scope.setAttribute("aria-label", "图谱范围");
+    scope.append(new Option("邻域（双向）", "neighbors"), new Option("全部递归子节点", "descendants"));
+    scope.value = graphFilter.scope;
+    scope.disabled = !center.value;
     hops.setAttribute("aria-label", "邻域跳数");
     [1, 2, 3].forEach((n) => hops.append(new Option(`${n} 跳`, String(n))));
+    hops.value = graphFilter.hops;
+    hops.disabled = !center.value || scope.value === "descendants";
     edgeType.setAttribute("aria-label", "关系筛选");
     edgeType.append(
       new Option("全部关系", ""),
       new Option("从属关系", "CHILD_OF"),
       new Option("平行关系", "SIBLING_OF"),
     );
+    edgeType.value = graphFilter.edgeType;
     target.setAttribute("aria-label", "路径终点");
     target.append(
       new Option("选择路径终点", ""),
@@ -631,8 +654,14 @@ export async function renderWorkspace(
     );
     controls.append(
       center,
+      scope,
       hops,
       edgeType,
+      button("全库图谱", () => {
+        center.value = "";
+        scope.value = "neighbors";
+        void applyFilters().catch(notify);
+      }),
       target,
       button("查找路径", async () => {
         if (!center.value || !target.value) {
@@ -656,7 +685,7 @@ export async function renderWorkspace(
     canvas.setAttribute("aria-label", "知识图谱画布");
     const legend = e(
       "div",
-      "实线箭头：从属（子 → 父）　虚线：平行　点击边查看完整文字 · 右键编辑",
+      "实线箭头：从属（子 → 父）　虚线：平行　拖动画布浏览 · 适应画布查看全图 · 右键节点查看分支",
       "graph-legend",
     );
     const buttons = e("div", undefined, "graph-actions");
@@ -692,40 +721,25 @@ export async function renderWorkspace(
       cy.zoom(Math.min(cy.zoom(), 1));
       cy.center();
     }
-    let layoutPositions: { id: string; x: number; y: number }[] = [];
-    let minimumDistance = 1;
+    let layoutData: GraphData = { nodes: [], edges: [] };
     function arrange(fit: boolean) {
       if (!cy) return;
+      const positions = branchLayout(layoutData, edgeLength, canvas.clientWidth / Math.max(1, canvas.clientHeight));
+      cy.batch(() => {
+        for (const pos of positions) cy!.getElementById(pos.id).position({ x: pos.x, y: pos.y });
+      });
       if (fit) {
-        cy.layout({
-          name: "concentric", animate: false, fit: false,
-          concentric: (node) => node.degree(), levelWidth: () => 1,
-          minNodeSpacing: 60, avoidOverlap: true, equidistant: true,
-          startAngle: -Math.PI * 5 / 6,
-        }).run();
-        const capture = () => {
-          layoutPositions = cy!.nodes().map((n) => ({ id: n.id(), ...n.position() }));
-          minimumDistance = Infinity;
-          for (let i = 0; i < layoutPositions.length; i++) {
-            for (let j = i + 1; j < layoutPositions.length; j++) {
-              const a = layoutPositions[i], b = layoutPositions[j];
-              minimumDistance = Math.min(minimumDistance, Math.hypot(a.x - b.x, a.y - b.y));
-            }
-          }
-        };
-        capture();
-        if (minimumDistance < 1) {
-          cy.layout({ name: "grid", fit: false, avoidOverlap: true }).run();
-          capture();
+        fitGraph();
+        // Large/deep graphs should open at a readable scale; explicit Fit still
+        // provides the complete overview without a minimum readable zoom.
+        if (cy.zoom() < 0.6) {
+          cy.zoom(0.6);
+          const children = new Set(layoutData.edges.filter((e) => e.type === "CHILD_OF").map((e) => e.source));
+          const root = layoutData.nodes.find((n) => n.id === center.value) ?? layoutData.nodes.find((n) => !children.has(n.id));
+          if (root) cy.center(cy.getElementById(root.id));
+          else cy.center();
         }
       }
-      // Scale a stable layout rather than rearranging the graph for every slider tick.
-      // Include the card diagonal so the minimum setting still leaves visible space between cards.
-      const scale = Number.isFinite(minimumDistance) ? (edgeLength + 180) / minimumDistance : 1;
-      cy.batch(() => {
-        for (const pos of layoutPositions) cy!.getElementById(pos.id).position({ x: pos.x * scale, y: pos.y * scale });
-      });
-      if (fit) fitGraph();
       else cy.center();
     }
     buttons.append(
@@ -733,6 +747,7 @@ export async function renderWorkspace(
       button("放大", () => cy?.zoom(cy.zoom() * 1.25)),
       button("缩小", () => cy?.zoom(cy.zoom() / 1.25)),
       button("适应画布", fitGraph),
+      button("重新布局", () => arrange(true)),
       button("导出 PNG", () => {
         if (cy) {
           const anchor = e("a");
@@ -745,13 +760,14 @@ export async function renderWorkspace(
     );
     panel.append(buttons, controls, legend, canvas);
     function draw(data: GraphData) {
+      layoutData = data;
       cy?.destroy();
       const icon = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#657a87" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h8"/></svg>');
       cy = cytoscape({
         container: canvas,
         elements: [
           ...data.nodes.map((n) => ({
-            data: { id: n.id, label: n.title, kind: n.kind },
+            data: { id: n.id, label: n.title, displayTitle: graphTitle(n.title, 14), kind: n.kind },
             selected: n.id === selected,
           })),
           ...data.edges.map((edge) => ({ data: { ...edge, displayLabel: edge.label.split(/\r\n|\r|\n/)[0] } })),
@@ -760,7 +776,7 @@ export async function renderWorkspace(
           {
             selector: "node",
             style: {
-              label: "data(label)",
+              label: "data(displayTitle)",
               shape: "round-rectangle",
               "background-color": "#ffffff",
               "border-width": 1.2,
@@ -774,7 +790,7 @@ export async function renderWorkspace(
               "font-family": '"Microsoft YaHei", sans-serif',
               "text-valign": "center",
               "text-margin-x": 15,
-              "text-wrap": "ellipsis",
+              "text-wrap": "wrap",
               "text-max-width": "112px",
               width: 168,
               height: 54,
@@ -826,8 +842,10 @@ export async function renderWorkspace(
       });
       const readableLabels = () => {
         if (!cy) return;
+        const fontSize = Math.min(20, Math.max(14, 12 / cy.zoom()));
+        cy.nodes().forEach((node) => { node.data("displayTitle", graphTitle(node.data("label"), fontSize)); });
         cy.style()
-          .selector("node").style("font-size", Math.min(28, Math.max(14, 12 / cy.zoom())))
+          .selector("node").style("font-size", fontSize)
           .selector("edge").style("font-size", Math.min(24, Math.max(12, 11 / cy.zoom())))
           .update();
       };
@@ -880,31 +898,36 @@ export async function renderWorkspace(
         );
       });
       canvas.oncontextmenu = (event) => event.preventDefault();
-      if (!data.nodes.length) status.textContent = "当前筛选下没有节点";
-      else
-        status.textContent = `${data.nodes.length} 个节点 · ${data.edges.length} 条关系`;
+      const prefix = center.value && scope.value === "descendants"
+        ? `分支：${graph.nodes.find((n) => n.id === center.value)?.title ?? ""}（含全部递归子节点） · ` : "";
+      status.textContent = prefix + (appliedSearch ? `搜索“${appliedSearch}”：找到 ` : "") +
+        `${data.nodes.length} 个节点 · ${data.edges.length} 条关系`;
     }
     let requestVersion = 0;
     async function applyFilters() {
       const version = ++requestVersion;
+      Object.assign(graphFilter, { center: center.value, scope: scope.value, hops: hops.value, edgeType: edgeType.value });
+      scope.disabled = !center.value;
+      hops.disabled = !center.value || scope.value === "descendants";
       const params = new URLSearchParams({ kbId: kb.id, hops: hops.value });
-      if (center.value) params.set("center", center.value);
+      if (center.value) { params.set("center", center.value); params.set("scope", scope.value); }
       if (edgeType.value) params.set("edgeType", edgeType.value);
       if (kind.value) params.set("kind", kind.value);
-      if (search.value.trim()) params.set("q", search.value.trim());
+      if (appliedSearch) params.set("q", appliedSearch);
       const result = await api<GraphData>(`/api/kbs/${kb.id}/graph?${params}`);
       if (!disposed && version === requestVersion && main.contains(canvas))
         draw(result);
     }
-    for (const select of [center, hops, edgeType])
+    for (const select of [center, scope, hops, edgeType])
       select.onchange = () => void applyFilters().catch(notify);
-    const ids = new Set(filtered().map((n) => n.id));
-    draw({
-      nodes: filtered(),
-      edges: graph.edges.filter(
-        (edge) => ids.has(edge.source) && ids.has(edge.target),
-      ),
-    });
+    if (center.value || edgeType.value) {
+      status.textContent = "正在加载图谱…";
+      void applyFilters().catch(notify);
+    }
+    else {
+      const ids = new Set(filtered().map((n) => n.id));
+      draw({ nodes: filtered(), edges: graph.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)) });
+    }
   }
   async function exportGraph(nodeIds?: string[]) {
     const result = await api(`/api/kbs/${kb.id}/export`, "POST", { nodeIds });

@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-15",
+  "version": "0.2.5",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.5_x64-setup.exe",
+  "bytes": 30430401,
+  "sha256": "46875182d2da32b4f18ba5a7a9ecac9cfa06acc2515052f0cd2f2c0cf6840592",
+  "buildExitCode": 0,
+  "backendTests": 57,
+  "uiTests": 17,
+  "uiScope": "Complete suite 16 passed, branch added; focused interaction reruns and final edge/branch 3 passed",
+  "standaloneRuntime": 1,
+  "nativeVerification": "Release executable, isolated data, empty PATH; node branch menu, leaf subgraph, exit to full graph verified",
+  "screenshots": [
+    "docs/evidence/branch-layout.png",
+    "docs/evidence/branch-overview.png"
+  ],
+  "deployment": "Installed after user save-and-close confirmation",
+  "userDataModified": false,
+  "installedVersion": "0.2.5",
+  "installerExitCode": 0,
+  "installedServiceFilesMatched": 16,
+  "installedNativeVerification": "Passed with isolated data and empty PATH",
+  "installedMcpVerification": "0.2.5, 35 tools, descendants schema and documentation"
+}

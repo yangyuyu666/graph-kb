@@ -25,8 +25,10 @@ export const mvpMethods = {
     );
     return edges.map((e) => ({ ...e, id: edgeId(e), properties: decodeProperties(e.properties) }));
   },
-  async graph({ kbId, center, hops = 1, edgeType, kind, q = "" }) {
+  async graph({ kbId, center, scope = "neighbors", hops = 1, edgeType, kind, q = "" }) {
     await this.mustKb(kbId);
+    if (!["neighbors", "descendants"].includes(scope)) throw fail("图谱范围无效");
+    if (scope === "descendants" && !center) throw fail("递归子节点范围须指定中心节点");
     if (!Number.isInteger(Number(hops)) || Number(hops) < 1 || Number(hops) > 3)
       throw fail("邻域跳数须为 1–3");
     let nodes = (await this.allNodes(kbId)).filter((n) => n.kind !== "Concept");
@@ -37,15 +39,28 @@ export const mvpMethods = {
     if (edgeType) {
       if (!["CHILD_OF", "SIBLING_OF"].includes(edgeType))
         throw fail("关系筛选无效");
-      edges = edges.filter((e) => e.type === edgeType);
+      if (scope !== "descendants") edges = edges.filter((e) => e.type === edgeType);
     }
     if (center) {
       if (!allowed.has(center)) throw fail("中心节点不在当前可见图中");
       const visited = new Set([center]);
       let frontier = [center];
-      for (let step = 0; step < Number(hops); step++) {
+      const children = new Map();
+      if (scope === "descendants") for (const edge of edges) {
+        if (edge.type !== "CHILD_OF") continue;
+        if (!children.has(edge.target)) children.set(edge.target, []);
+        children.get(edge.target).push(edge.source);
+      }
+      for (let step = 0; frontier.length && (scope === "descendants" || step < Number(hops)); step++) {
         const next = [];
-        for (const id of frontier)
+        for (const id of frontier) {
+          if (scope === "descendants") {
+            for (const child of children.get(id) ?? []) if (!visited.has(child)) {
+              visited.add(child);
+              next.push(child);
+            }
+            continue;
+          }
           for (const e of edges) {
             const other =
               e.source === id ? e.target : e.target === id ? e.source : null;
@@ -54,6 +69,7 @@ export const mvpMethods = {
               next.push(other);
             }
           }
+        }
         frontier = next;
       }
       nodes = nodes.filter((n) => visited.has(n.id));
@@ -69,7 +85,7 @@ export const mvpMethods = {
     return {
       nodes,
       edges: edges.filter(
-        (e) => allowed.has(e.source) && allowed.has(e.target),
+        (e) => allowed.has(e.source) && allowed.has(e.target) && (!edgeType || e.type === edgeType),
       ),
     };
   },

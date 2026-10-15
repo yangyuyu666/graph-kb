@@ -38,7 +38,7 @@ const help = {
   update_doc: ["按 revision 完整替换正文，返回新 revision 和 extraction 状态。若云抽取失败，正文仍已保存；不可按旧版本盲目重试。开启抽取可能发送正文到云端并计费。", { id: "要保存的可见节点 UUID。" }],
   rename_node: ["按当前 revision 修改标题，稳定 UUID 不变，返回新 revision；先 get_node，冲突后重读。", { id: "待重命名的可见节点 UUID。" }],
   delete_node: ["软删除并返回回收站批次 id（不同于节点 ID）。single 默认只删当前节点；cascade 连带独占后代，保留有外部父节点的共享分支。", { id: "待删除的节点 UUID。", mode: "single（默认）：仅当前节点，其他节点保留；cascade：删除独占后代，保留共享分支。仅按用户请求选择范围。" }],
-  get_graph: ["返回可见 nodes/edges（含关系 ID 和真实方向）。无 center 时为全库可见图；有 center 则取 1–3 跳无向邻域。筛选不会改数据，不含后台 Concept。", { center: "可选同库可见中心节点 UUID；省略不限制邻域。" }],
+  get_graph: ["返回可见 nodes/edges（含关系 ID 和真实方向）。默认 neighbors：无 center 为全库，有 center 为 1–3 跳无向邻域。descendants：沿 CHILD_OF 父到子递归全部后代并包含中心，去重共享节点，不纳入外部父节点、祖先或兄弟。筛选不改数据，不含后台 Concept。", { center: "同库可见中心节点 UUID；descendants 时必填。", scope: "neighbors（默认）或 descendants（全部递归子节点，不限深度）。后者忽略 hops 的深度限制；先遍历完整从属关系，再应用 kind/q/edgeType 展示筛选，筛选可能隐藏中心或中间节点。" }],
   query_neighbors: ["返回 1–3 跳无向邻居的 id/title/kind/type/distance，包含后台 Concept；type 是首次发现该节点的边类型，不能由结果推断父子方向，方向用 get_graph。", { id: "起始节点 UUID，可为可见节点或已查询到的 Concept。" }],
   query_path: ["查询同库可见节点间的一条无向最短路径，返回 nodes/edges，边保留子→父等真实方向；无路径时均为空数组。", { source: "路径起点的同库可见节点 UUID。", target: "路径终点的同库可见节点 UUID。" }],
   search: ["搜索可见节点标题与正文，返回元数据及 excerpt；完整正文需 get_node。省略 kbId 搜全部知识库。", {}],

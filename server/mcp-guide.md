@@ -35,7 +35,8 @@ MCP 操作同一知识库数据，不会代替用户点击界面或承诺自动�
 - SIBLING_OF 是同库可见顶级节点的平行关系；系统自动维护，以 UUID 排序后只存一条，不必重复创建反向边。它不能代替任意文档引用。
 - 两种边均有 label 文字属性，支持换行，最多 200 字符，去除首尾空白；空字符串表示无标签。label 只是注释，不是新增语义关系类型，不改变结构约束。自动维护已有平行边不会清空文字；关系因结构变化被删除时其文字也随边移除。JSON 导出/导入及回收站恢复保留标签；旧数据库和旧 JSON 中缺失标签视为空字符串。
 - get_graph 返回可见 nodes/edges，关系有完整 id：`TYPE:sourceUUID:targetUUID`。创建/修改关系返回的端点可能规范化，重新读取图谱取得关系 ID；不要用节点 UUID 调用 delete_edge。
-- get_graph 有 center 时按 1–3 跳无向邻域筛选；query_path 也是无向最短路径，返回边仍保留真实方向。query_neighbors 包括 Concept，但其结果不提供边的完整方向，不能据此判断谁是谁的父节点。无向邻域不是无限深度的“所有后代”。
+- get_graph 默认 scope="neighbors"，有 center 时按 1–3 跳无向邻域筛选。全部递归子节点用 `get_graph({kbId,center,scope:"descendants"})`：包含中心，沿 CHILD_OF 从父到子遍历全部层级，不受 hops 深度限制；共享后代只返回一次，不带入其外部父节点、祖先或兄弟，不沿平行关系扩展。center 必须是同库可见节点；省略或非法范围报错。先计算完整后代集合，再应用 kind/q 节点筛选和 edgeType 边筛选，可能隐藏中心或中间节点；需要完整分支时不要附加筛选。UI 右键“只看此节点及全部子节点”会清空文字/类型/关系筛选；“全库图谱”解除中心范围，保留当前文字/类型/关系筛选。
+- query_path 是无向最短路径，返回边保留真实方向。query_neighbors 包括 Concept，但其结果不提供边的完整方向，不能据此判断谁是谁的父节点；它仍只有 1–3 跳，不是全部后代工具。
 - 新引用写成 `[文档标题](node:知识库UUID/节点UUID)`，旧的 node:节点UUID 仍兼容。复制链接及引用节点对话框会使用带库 ID 的形式，引用对话框可选择其他知识库。backlinks 汇总各已加载库的反向链接，不新建跨库图边。
 - resolve_links 的 ids 接受 `库UUID/节点UUID` 或旧节点 UUID；返回原 id、nodeId、kbId、state 和可用时的 title。state=unavailable 表示目标库未加载或旧裸 ID 无法定位；保留链接，导入目标库后再检查。deleted 表示库已加载但节点删除/不存在/隐藏，不保证能从回收站恢复。文件夹位置变化不会改变带稳定 ID 的引用。
 - 附件先 upload_asset，再按需要用 `[文件名](asset:实际附件UUID)` 或图片 Markdown 写入正文；附件上传不会自动插入链接。

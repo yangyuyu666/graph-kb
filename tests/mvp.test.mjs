@@ -19,6 +19,32 @@ async function setup(t) {
     run("create_node", { kbId: kb.id, title, parentId, kind });
   return { root, store, tools, run, kb, node };
 }
+test("递归子图不受三跳限制，保留共享后代但排除其外部父节点", async (t) => {
+  const { run, node, kb } = await setup(t);
+  const ancestor = await node("祖先"), root = await node("分支", ancestor.id);
+  const outside = await node("外部项目"), sibling = await node("兄弟", ancestor.id);
+  const chain = [root];
+  for (let i = 0; i < 5; i++) chain.push(await node(`后代${i}`, chain.at(-1).id, i === 4 ? "Task" : "Page"));
+  await run("create_edge", { type: "CHILD_OF", source: chain[2].id, target: outside.id });
+  const args = { kbId: kb.id, center: root.id, scope: "descendants" };
+  const result = await run("get_graph", args);
+  assert.deepEqual(new Set(result.nodes.map(n => n.id)), new Set(chain.map(n => n.id)));
+  assert.equal(result.edges.length, 5);
+  assert.ok(!result.nodes.some(n => [ancestor.id, sibling.id, outside.id].includes(n.id)));
+  assert.deepEqual((await run("get_graph", { ...args, kind: "Task" })).nodes.map(n => n.id), [chain.at(-1).id]);
+  assert.equal((await run("get_graph", { ...args, q: "后代4" })).nodes.length, 1);
+  const parallel = await run("get_graph", { ...args, edgeType: "SIBLING_OF" });
+  assert.equal(parallel.nodes.length, 6);
+  assert.equal(parallel.edges.length, 0);
+  assert.equal((await run("get_graph", { ...args, center: chain.at(-1).id })).nodes.length, 1);
+  assert.ok((await run("get_graph", { kbId: kb.id, center: root.id, hops: 1 })).nodes.some(n => n.id === ancestor.id));
+  await assert.rejects(run("get_graph", { kbId: kb.id, scope: "descendants" }));
+  await assert.rejects(run("get_graph", { ...args, center: outside.id + "invalid" }));
+  await assert.rejects(run("get_graph", { ...args, scope: "invalid" }));
+  const other = await run("create_kb", { name: "其他库" });
+  await assert.rejects(run("get_graph", { ...args, kbId: other.id }));
+});
+
 test("层级创建、多父投影、类型、同库约束与可见图过滤", async (t) => {
   const { run, node, kb, store } = await setup(t);
   const a = await node("项目"),

@@ -105,6 +105,12 @@ test("MCP stdio 外部进程：初始化、工具发现、实际 CRUD、规则�
   const b = (
     await tool("create_node", { kbId: kb.id, title: "子", parentId: a.id })
   ).data;
+  await t.test("MCP 递归子图参数和实际调用", async () => {
+    assert.deepEqual(catalog.find(t => t.name === "get_graph").inputSchema.properties.scope.enum, ["neighbors", "descendants"]);
+    const result = await tool("get_graph", { kbId: kb.id, center: a.id, scope: "descendants" });
+    assert.deepEqual(new Set(result.data.nodes.map(n => n.id)), new Set([a.id, b.id]));
+    assert.equal((await tool("get_graph", { kbId: kb.id, scope: "descendants" })).isError, true);
+  });
   await t.test("MCP 可发现标签参数，局部修改、读取和清空边文字", async () => {
     const schema = catalog.find((entry) => entry.name === "update_edge").inputSchema;
     assert.deepEqual(schema.required, ["id"]);

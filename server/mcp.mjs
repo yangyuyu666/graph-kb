@@ -72,10 +72,11 @@ const definitions = [
   ],
   [
     "get_graph",
-    "可见图谱、类型筛选与 1–3 跳邻域",
+    "可见图谱、类型筛选、1–3 跳邻域或全部递归子节点",
     {
       kbId: id,
       center: id,
+      scope: { type: "string", enum: ["neighbors", "descendants"] },
       hops: { type: "integer", minimum: 1, maximum: 3 },
       kind: string,
       edgeType: string,
@@ -186,7 +187,7 @@ async function handle(message) {
     return result({
       protocolVersion: "2025-11-25",
       capabilities: { tools: { listChanged: false }, resources: {} },
-      serverInfo: { name: "graph-kb", version: "0.2.4" },
+      serverInfo: { name: "graph-kb", version: "0.2.5" },
       instructions,
     });
   }

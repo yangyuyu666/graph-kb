@@ -264,6 +264,16 @@ try {
     Buffer.from(graphShot.data, "base64"),
   );
   const child = graph.nodes.find((n) => n.id !== id);
+  const branchPoint = await main.evaluate(`(() => { const canvas=document.querySelector('#graph-canvas'); const p=canvas._cyreg.cy.getElementById('${child.id}').renderedPosition(); const r=canvas.getBoundingClientRect(); return {x:r.left+p.x,y:r.top+p.y}; })()`);
+  for (const type of ["mousePressed", "mouseReleased"])
+    await main.send("Input.dispatchMouseEvent", { type, button: "right", buttons: type === "mousePressed" ? 2 : 0, clickCount: 1, ...branchPoint });
+  await until(() => main.evaluate(`!!document.querySelector('[role=menuitem][aria-label="只看此节点及全部子节点"]')`));
+  await main.evaluate(`document.querySelector('[role=menuitem][aria-label="只看此节点及全部子节点"]').click()`);
+  await until(() => main.evaluate(`document.querySelector('#graph-canvas')?._cyreg?.cy?.nodes().length === 1`));
+  assert.equal(await main.evaluate(`document.querySelector('#graph-canvas')._cyreg.cy.nodes()[0].id()`), child.id);
+  assert.equal((await main.evaluate(`qaRequest('/api/kbs/${saved.kbId}/graph?center=${child.id}&scope=descendants')`)).nodes.length, 1);
+  await main.evaluate(`Array.from(document.querySelectorAll('button')).find(b => b.textContent === '全库图谱').click()`);
+  await until(() => main.evaluate(`document.querySelector('#graph-canvas')?._cyreg?.cy?.nodes().length === 2`));
   const deleted = await main.evaluate(
     `qaRequest('/api/nodes/${child.id}', 'DELETE')`,
   );
