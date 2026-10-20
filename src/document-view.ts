@@ -9,6 +9,7 @@ import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import { editorViewCtx } from "@milkdown/kit/core";
 import { type CloudConfig } from "./settings";
+import { enhanceCodeBlocks } from "./code-block-view";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 
@@ -171,6 +172,7 @@ export async function mountDocument(
     await crepe.destroy();
     throw new DOMException("Aborted", "AbortError");
   }
+  enhanceCodeBlocks(el("#editor"), events.signal);
   const refreshDocumentLinks = documentExtras(
     node,
     crepe,

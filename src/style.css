@@ -302,6 +302,57 @@ input {
   padding: 28px 40px;
   min-height: 420px;
 }
+/* Keep One Dark's syntax colors and existing type size on a matching dark surface. */
+.milkdown .milkdown-code-block {
+  --crepe-color-surface: #181a1f;
+  --crepe-color-surface-low: #252830;
+  --crepe-color-on-surface: #abb2bf;
+  --crepe-color-on-surface-variant: #c6ccd6;
+  --crepe-color-secondary: #303540;
+  --crepe-color-hover: #383e4a;
+  --crepe-color-outline: #7d8799;
+  --crepe-color-primary: #91baff;
+  color-scheme: dark;
+  color: #abb2bf;
+  border-radius: 8px;
+}
+/* A closed popover is still a normal inline code block in the document. */
+.milkdown .milkdown-code-block[popover] {
+  display: block;
+  position: relative;
+  inset: auto;
+  border: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+.milkdown .milkdown-code-block .tools-button-group .code-enlarge,
+.milkdown .milkdown-code-block:focus-within .tools-button-group button,
+.milkdown .milkdown-code-block:popover-open .tools-button-group button {
+  opacity: 1;
+}
+.milkdown .milkdown-code-block:popover-open {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(1400px, calc(100vw - 48px));
+  height: calc(100dvh - 48px);
+  box-sizing: border-box;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 80px #0008;
+  overflow: hidden;
+}
+.milkdown .milkdown-code-block::backdrop { background: #10182799; }
+.milkdown .milkdown-code-block:popover-open .tools { flex-shrink: 0; }
+.milkdown .milkdown-code-block:popover-open .language-button { opacity: 1; }
+.milkdown .milkdown-code-block:popover-open .codemirror-host {
+  flex: 1;
+  min-height: 0;
+}
+.milkdown .milkdown-code-block:popover-open .cm-editor { height: 100%; }
+.milkdown .milkdown-code-block:popover-open .cm-scroller { overflow: auto; }
 .milkdown a {
   color: #5742e9;
 }

@@ -1122,7 +1122,7 @@ dependencies = [
 
 [[package]]
 name = "graph-kb"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "dunce",
  "serde",

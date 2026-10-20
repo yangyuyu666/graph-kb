@@ -298,7 +298,7 @@ try {
   const linked = await main.evaluate(
     `qaRequest('/api/nodes', 'POST', { kbId: ${JSON.stringify(saved.kbId)}, title: '原生关联文档' })`,
   );
-  const markdown = `# 原生 Markdown 验证\n\n中文 **知识图谱**。\n\n[原生关联文档](node:${linked.id})\n`;
+  const markdown = `# 原生 Markdown 验证\n\n中文 **知识图谱**。\n\n[原生关联文档](node:${linked.id})\n\n\`\`\`cpp\n// 中文代码注释\nint main() { return 0; }\n\`\`\`\n`;
   await main.evaluate(
     `qaRequest('/api/nodes/${id}', 'PATCH', ${JSON.stringify({ revision: 2, markdown })})`,
   );
@@ -306,6 +306,13 @@ try {
   await until(() =>
     doc.evaluate(`!!document.querySelector('a[href="node:${linked.id}"]')`),
   );
+  await until(() => doc.evaluate(`!!document.querySelector('.code-enlarge')`));
+  assert.equal(await doc.evaluate(`getComputedStyle(document.querySelector('.milkdown-code-block')).backgroundColor`), "rgb(24, 26, 31)");
+  await doc.evaluate(`document.querySelector('.code-enlarge').click()`);
+  await until(() => doc.evaluate(`!!document.querySelector('.milkdown-code-block:popover-open')`));
+  assert.equal(await doc.evaluate(`document.querySelector('.milkdown-code-block').getBoundingClientRect().width > innerWidth * 0.9`), true);
+  await doc.evaluate(`document.querySelector('.code-enlarge').click()`);
+  await until(() => doc.evaluate(`!document.querySelector('.milkdown-code-block:popover-open')`));
   const shot = await doc.send("Page.captureScreenshot", { format: "png" });
   await writeFile(
     "docs/evidence/tauri-editor.png",
@@ -353,7 +360,7 @@ try {
     `setTimeout(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', {label:'main'}), 100)`,
   );
   console.log(
-    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, node/edge properties and database export, database copy import, trash/restore, Milkdown input, real Kùzu save, native node-link windows, settings default off, native window close",
+    "PASS: Tauri IPC, inline editing, tree context menu, parent/child creation, Cytoscape canvas, edge label context edit and restore, node/edge properties and database export, database copy import, trash/restore, Milkdown input, dark code block and enlarge/collapse, real Kùzu save, native node-link windows, settings default off, native window close",
   );
 } finally {
   for (const connection of connections) connection.close();

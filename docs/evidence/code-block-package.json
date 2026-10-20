@@ -1,0 +1,9 @@
+{
+  "version": "0.2.7",
+  "installer": "Graph KB_0.2.7_x64-setup.exe",
+  "sha256": "21E3C6FCEF8719CD04CD634B09C484847C13F93AA3FF4700941887D5DE27BB3B",
+  "bytes": 30421725,
+  "ui": "2 code block tests plus 2 existing editor tests passed",
+  "desktop": "release and installed application passed isolated data and empty PATH checks",
+  "installedServiceFilesVerified": 16
+}

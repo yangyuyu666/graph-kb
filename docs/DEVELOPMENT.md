@@ -31,7 +31,7 @@ npm run build
 npm run desktop:build
 ```
 
-安装包位于 `src-tauri/target/release/bundle/nsis/`。当前版本为 `Graph KB_0.2.6_x64-setup.exe`，未签名。`dist/` 仅为前端产物，不能替代完整桌面应用。
+安装包位于 `src-tauri/target/release/bundle/nsis/`。当前版本为 `Graph KB_0.2.7_x64-setup.exe`，未签名。`dist/` 仅为前端产物，不能替代完整桌面应用。
 
 打包会包含 Node.js、Kùzu、本地服务、MCP 手册和第三方许可证。不要把测试库、连接文件、个人配置或云端 Key 放进资源目录。
 

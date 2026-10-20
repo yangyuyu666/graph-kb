@@ -6,7 +6,7 @@
 
 本地桌面知识库 · 同一份数据，两种视角 · 让 AI 通过 MCP 协助整理
 
-**Windows x64** &nbsp; / &nbsp; **v0.2.6 · 本地 MVP** &nbsp; / &nbsp; **Apache-2.0**
+**Windows x64** &nbsp; / &nbsp; **v0.2.7 · 本地 MVP** &nbsp; / &nbsp; **Apache-2.0**
 
 [快速开始](#quick-start) · [使用指南](#usage) · [配置 MCP](#mcp) · [备份与迁移](#backup) · [开发文档](docs/DEVELOPMENT.md)
 
@@ -36,7 +36,7 @@ Graph KB 是一款基于 **Tauri + Kùzu + Milkdown + Cytoscape.js** 的本地�
 
 ### 使用桌面安装包
 
-适用于 **Windows x64**。运行项目维护者提供或自行构建的 `Graph KB_0.2.6_x64-setup.exe`，完成安装后启动 Graph KB。
+适用于 **Windows x64**。运行项目维护者提供或自行构建的 `Graph KB_0.2.7_x64-setup.exe`，完成安装后启动 Graph KB。
 
 - 安装包内置 Node.js、Kùzu 和本地服务，使用者不需要另装 Node 或 Rust。
 - 需要 WebView2；安装器按 Tauri 配置检测和处理。当前构建未签名。
@@ -71,6 +71,8 @@ npm run dev
 ![Graph KB 目录视图：文件夹和文档图标、右侧 Markdown 编辑区](docs/images/directory.png)
 
 标题、保存按钮和附件工具栏固定在编辑区顶部。目录与编辑器之间的分隔条可以拖动；有子节点时显示文件夹图标，该节点本身仍可以写正文。
+
+代码块使用深黑背景，保留语法高亮和原有字号。点击代码块右上角 **放大查看** 可扩大阅读区域，支持滚动、复制和继续编辑；按 **Esc**、点击外部或 **收起** 返回，草稿不丢失。
 
 ### 2. 切换视图、查找内容
 
