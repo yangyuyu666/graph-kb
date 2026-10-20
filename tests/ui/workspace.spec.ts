@@ -51,7 +51,8 @@ test("目录子节点创建、折叠、图谱切换、路径与子图导出", as
   await page.screenshot({ path: "docs/evidence/mvp-tree.png" });
   await page.getByRole("tab", { name: "图谱", exact: true }).click();
   await expect(page.locator("#graph-canvas canvas").first()).toBeVisible();
-  await page.getByLabel("邻域中心", { exact: true }).selectOption(root.id);
+  await page.getByRole("button", { name: "邻域中心", exact: true }).click();
+  await page.getByRole("dialog", { name: "选择图谱中心" }).getByRole("button", { name: `选择 ${root.title}`, exact: true }).click();
   await page.getByLabel("路径终点").selectOption(child.id);
   await page.getByRole("button", { name: "查找路径" }).click();
   await expect(page.locator("#status")).toContainText("路径包含 1 条关系");

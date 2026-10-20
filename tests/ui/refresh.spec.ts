@@ -9,7 +9,8 @@ test("刷新读取外部变更并保留图谱范围、筛选和目录草稿，�
   await page.getByRole("button", { name: "研究", exact: true }).click();
   await page.locator(".ProseMirror").fill("保留未保存草稿");
   await page.getByRole("tab", { name: "图谱", exact: true }).click();
-  await page.getByLabel("邻域中心", { exact: true }).selectOption(parent.id);
+  await page.getByRole("button", { name: "邻域中心", exact: true }).click();
+  await page.getByRole("dialog", { name: "选择图谱中心" }).getByRole("button", { name: `选择 ${parent.title}`, exact: true }).click();
   await page.getByLabel("图谱范围", { exact: true }).selectOption("descendants");
   await page.getByLabel("关系筛选", { exact: true }).selectOption("CHILD_OF");
   await page.getByLabel("节点类型筛选").selectOption("Page");
@@ -21,7 +22,7 @@ test("刷新读取外部变更并保留图谱范围、筛选和目录草稿，�
   await request.post("/api/nodes", { data: { kbId: kb.id, parentId: parent.id, title: "其他内容" } });
   await page.getByRole("button", { name: "刷新", exact: true }).click();
   await expect.poll(labels).toEqual(["研究", "研究新节点"]);
-  await expect(page.getByLabel("邻域中心", { exact: true })).toHaveValue(parent.id);
+  await expect(page.getByRole("button", { name: "邻域中心", exact: true })).toHaveAttribute("data-node-id", parent.id);
   await expect(page.getByLabel("图谱范围", { exact: true })).toHaveValue("descendants");
   await expect(page.getByLabel("关系筛选", { exact: true })).toHaveValue("CHILD_OF");
   await expect(page.getByLabel("节点类型筛选")).toHaveValue("Page");

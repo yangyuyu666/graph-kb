@@ -189,6 +189,14 @@ try {
   );
   await main.evaluate(`document.querySelector('#refresh-workspace').click()`);
   await until(() => main.evaluate(`!document.querySelector('#refresh-workspace').disabled && !!document.querySelector('#graph-canvas canvas')`));
+  await main.evaluate(`document.querySelector('[aria-label="邻域中心"]').click()`);
+  await until(() => main.evaluate(`!!document.querySelector('.node-picker-dialog[open]')`));
+  await main.evaluate(`window.qaPreviousGraph = document.querySelector('#graph-canvas')._cyreg.cy; document.querySelector('.node-picker-dialog [data-node-id="${id}"] .node-picker-choice').click()`);
+  await until(() => main.evaluate(`!document.querySelector('.node-picker-dialog') && document.querySelector('[aria-label="邻域中心"]').value === "${id}" && !!document.querySelector('#graph-canvas')?._cyreg?.cy && document.querySelector('#graph-canvas')._cyreg.cy !== window.qaPreviousGraph`));
+  await main.evaluate(`document.querySelector('[aria-label="邻域中心"]').click()`);
+  await until(() => main.evaluate(`!!document.querySelector('.node-picker-all')`));
+  await main.evaluate(`window.qaPreviousGraph = document.querySelector('#graph-canvas')._cyreg.cy; document.querySelector('.node-picker-all').click()`);
+  await until(() => main.evaluate(`!document.querySelector('.node-picker-dialog') && document.querySelector('[aria-label="邻域中心"]').value === "" && !!document.querySelector('#graph-canvas')?._cyreg?.cy && document.querySelector('#graph-canvas')._cyreg.cy !== window.qaPreviousGraph`));
   assert.equal(
     await main.evaluate(
       `document.querySelector('#graph-canvas canvas').width > 0`,

@@ -2,6 +2,7 @@ import { contextMenu, closeContextMenu } from "./context-menu";
 import { branchLayout, graphTitle } from "./graph-layout";
 import { directoryIcon } from "./directory-icons";
 import { defaultWorkspaceView } from "./view-preferences";
+import { nodePicker, setNodePickerValue } from "./node-picker";
 import { mountDocument } from "./document-view";
 import cytoscape, { type Core } from "cytoscape";
 import { zipSync, strToU8 } from "fflate";
@@ -424,6 +425,16 @@ export async function renderWorkspace(
           ),
       },
       { label: "管理关系", icon: "◇", run: () => relations(node) },
+      { label: "设为中心", icon: "◎", run: () => {
+        graphFilter.center = node.id;
+        graphFilter.scope = "neighbors";
+        clearTimeout(timer);
+        ++searchVersion;
+        search.value = appliedSearch = kind.value = "";
+        matches = undefined;
+        searchForm.setAttribute("aria-busy", "false");
+        switchView("graph");
+      } },
       { label: "只看此节点及全部子节点", icon: "⌘", run: () => {
         graphFilter.center = node.id;
         graphFilter.scope = "descendants";
@@ -641,18 +652,12 @@ export async function renderWorkspace(
   function renderGraph() {
     panel.className = "workspace-panel graph-layout";
     const controls = e("div", undefined, "graph-controls");
-    const center = e("select"),
+    if (!graph.nodes.some((n) => n.id === graphFilter.center)) graphFilter.center = "";
+    const center = nodePicker(graph, graphFilter.center),
       scope = e("select"),
       hops = e("select"),
       edgeType = e("select"),
       target = e("select");
-    center.setAttribute("aria-label", "邻域中心");
-    center.append(
-      new Option("全库图谱", ""),
-      ...graph.nodes.map((n) => new Option(n.title, n.id)),
-    );
-    if (!graph.nodes.some((n) => n.id === graphFilter.center)) graphFilter.center = "";
-    center.value = graphFilter.center;
     scope.setAttribute("aria-label", "图谱范围");
     scope.append(new Option("邻域（双向）", "neighbors"), new Option("全部递归子节点", "descendants"));
     scope.value = graphFilter.scope;
@@ -679,7 +684,7 @@ export async function renderWorkspace(
       hops,
       edgeType,
       button("全库图谱", () => {
-        center.value = "";
+        setNodePickerValue(center, graph, "");
         scope.value = "neighbors";
         void applyFilters().catch(notify);
       }),

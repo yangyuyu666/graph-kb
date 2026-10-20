@@ -35,7 +35,8 @@ test("分支图谱：右键进入全部递归子节点、共享分支、筛选�
   await expect.poll(ids).toEqual(chain.map(n => n.id).sort());
   await page.getByRole("button", { name: "全库图谱", exact: true }).click();
   await expect.poll(async () => (await ids()).length).toBe(23);
-  await page.getByLabel("邻域中心").selectOption(root.id);
+  await page.getByRole("button", { name: "邻域中心", exact: true }).click();
+  await page.getByRole("dialog", { name: "选择图谱中心" }).getByRole("button", { name: `选择 ${root.title}`, exact: true }).click();
   await page.getByLabel("图谱范围").selectOption("descendants");
   await expect.poll(async () => (await ids()).length).toBe(22);
   // Re-layout does not change the data, and parent/child clusters have no card overlaps.
