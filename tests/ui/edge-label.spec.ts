@@ -27,6 +27,7 @@ test("右键边编辑文字，画布显示、刷新保留、管理关系可修�
   await page.screenshot({ path: "docs/evidence/edge-label.png" });
   await page.reload();
   await page.getByRole("button", { name: /边文字界面验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: "研究笔记", exact: true }).click({ button: "right" });
   await page.getByRole("menuitem", { name: "管理关系", exact: true }).click();
   await expect(page.locator(".relation-row")).toContainText("参考资料");

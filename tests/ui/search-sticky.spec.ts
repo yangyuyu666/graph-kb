@@ -8,6 +8,7 @@ test("库内搜索支持按钮和回车，正文命中展开父目录，清空�
   await request.post("/api/nodes", { data: { kbId: kb.id, title: "其他资料" } });
   await page.goto("/");
   await page.getByRole("button", { name: /搜索交互验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: "折叠 父目录", exact: true }).click();
   const input = page.getByRole("searchbox", { name: "搜索节点" });
   const form = page.getByRole("search", { name: "当前知识库搜索" });
@@ -53,6 +54,7 @@ test("长文档滚动时标题、保存与附件栏固定，目录内和独立�
   const node = await (await request.post("/api/nodes", { data: { kbId: kb.id, title: "长文档固定标题" } })).json();
   await request.patch(`/api/nodes/${node.id}`, { data: { revision: 0, markdown: Array.from({length: 80}, (_, i) => `第 ${i + 1} 段正文，滚动检查工具栏。`).join("\n\n") } });
   await page.goto("/"); await page.getByRole("button", { name: /文档固定工具栏/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: "长文档固定标题", exact: true }).click();
   const pane = page.locator(".inline-document-pane");
   await expect(pane.locator(".ProseMirror")).toBeVisible();

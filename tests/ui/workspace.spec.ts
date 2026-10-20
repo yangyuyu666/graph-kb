@@ -17,6 +17,7 @@ test("目录子节点创建、折叠、图谱切换、路径与子图导出", as
   });
   await page.goto("/");
   await page.getByRole("button", { name: /层级目录验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await expect(
     page.getByRole("tab", { name: "目录", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
@@ -92,6 +93,7 @@ test("界面重命名、软删除、已删除链接占位和回收站恢复", as
   });
   await page.goto("/");
   await page.getByRole("button", { name: /回收站验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page
     .getByRole("button", { name: "被引用", exact: true })
     .click({ button: "right" });
@@ -136,6 +138,7 @@ test("Markdown 导入、全文搜索、附件保存与 MCP 配置入口", async 
   ).json();
   await page.goto("/");
   await page.getByRole("button", { name: /导入与附件/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: "导入", exact: true }).click();
   await page.getByLabel("选择文件").setInputFiles({
     name: "导入笔记.md",

@@ -16,6 +16,7 @@ test("分支图谱：右键进入全部递归子节点、共享分支、筛选�
   expect((await (await request.get(endpoint)).json()).nodes).toHaveLength(5);
   await page.goto("/");
   await page.getByRole("button", { name: /分支布局验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: branch.title, exact: true }).click({ button: "right" });
   await page.getByRole("menuitem", { name: "只看此节点及全部子节点" }).click();
   const canvas = page.locator("#graph-canvas");

@@ -88,6 +88,9 @@ try {
     `Array.from(document.querySelectorAll('.card')).find(e => e.textContent.includes(${JSON.stringify(tag)})).click()`,
   );
   await until(() => main.evaluate('!!document.querySelector("#new-node")'));
+  await until(() => main.evaluate(`!!document.querySelector('#graph-canvas canvas')`));
+  assert.equal(await main.evaluate(`document.querySelector('[aria-label="关系筛选"]').value`), "CHILD_OF");
+  await main.evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find(e => e.textContent === '目录').click()`);
   await main.evaluate(`document.querySelector('#new-node').click()`);
   await until(() => main.evaluate('!!document.querySelector("dialog input")'));
   await main.evaluate(
@@ -329,6 +332,9 @@ try {
   assert.equal((await targets()).length, 3);
   await main.evaluate(`document.querySelector('#settings-nav').click()`);
   await until(() => main.evaluate('!!document.querySelector("#cloud-form")'));
+  assert.equal(await main.evaluate(`document.querySelector('#default-view').value`), "graph");
+  await main.evaluate(`document.querySelector('#default-view').value = 'tree'; document.querySelector('#default-view').dispatchEvent(new Event('change', {bubbles:true}))`);
+  assert.equal(await main.evaluate(`localStorage.getItem('graph-kb:default-view')`), "tree");
   assert.equal(
     await main.evaluate(
       'document.querySelector("#extraction-enabled").checked',

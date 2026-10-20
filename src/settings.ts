@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { defaultWorkspaceView, saveDefaultWorkspaceView, type WorkspaceView } from "./view-preferences";
 
 export interface CloudConfig {
   enabled: boolean;
@@ -10,7 +11,13 @@ export interface CloudConfig {
 }
 
 export async function renderSettings(container: HTMLElement) {
-  container.innerHTML = `<header><div><h1>设置</h1><p>云端模型与自动建图</p></div></header><p id="status" role="status"></p>
+  container.innerHTML = `<header><div><h1>设置</h1><p>界面偏好、云端模型与自动建图</p></div></header><p id="status" role="status"></p>
+  <section class="settings-form" aria-labelledby="view-settings-title">
+    <h2 id="view-settings-title">界面偏好</h2>
+    <label>默认视图<select id="default-view"><option value="graph">图谱</option><option value="tree">目录</option></select></label>
+    <p class="hint">选择后自动保存到本机，下次进入任意知识库时生效。临时切换视图不会改变此设置。</p>
+  </section>
+  <h2>云端模型与自动建图</h2>
   <form id="cloud-form" class="settings-form">
     <label>供应商<select id="provider"><option value="">请选择供应商</option></select></label>
     <label>API 基础地址<input id="base-url" type="url" placeholder="https://…" autocomplete="off" /></label>
@@ -30,6 +37,17 @@ export async function renderSettings(container: HTMLElement) {
     "#extraction-enabled",
   )!;
   const status = container.querySelector<HTMLElement>("#status")!;
+  const defaultView = container.querySelector<HTMLSelectElement>("#default-view")!;
+  defaultView.value = defaultWorkspaceView();
+  defaultView.onchange = () => {
+    try {
+      saveDefaultWorkspaceView(defaultView.value as WorkspaceView);
+      status.textContent = "默认视图已保存，下次进入知识库时生效";
+    } catch {
+      defaultView.value = defaultWorkspaceView();
+      status.textContent = "无法保存默认视图，请检查本机存储权限后重试";
+    }
+  };
   let config = await api<CloudConfig>("/api/settings");
   for (const provider of config.providers) {
     const option = document.createElement("option");

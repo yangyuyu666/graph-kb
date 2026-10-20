@@ -21,6 +21,7 @@ async function fixture(request: any) {
 async function enter(page: any, kb: any) {
   await page.goto("/");
   await page.getByRole("button", { name: new RegExp(kb.name) }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
 }
 
 test("目录单击内联编辑、拖拽分栏、草稿保护和右键菜单", async ({

@@ -53,6 +53,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1080 }, deviceScaleFactor: 1 });
   await page.goto(base);
   await page.getByRole("button", { name: /研究工作台/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: rootNode.title, exact: true }).click();
   await page.locator(".ProseMirror h1").waitFor();
   // Remove pointer focus outlines, without changing the UI or document content.

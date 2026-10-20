@@ -5,6 +5,7 @@ test("刷新读取外部变更并保留图谱范围、筛选和目录草稿，�
   const parent = await (await request.post("/api/nodes", { data: { kbId: kb.id, title: "研究" } })).json();
   await page.goto("/");
   await page.getByRole("button", { name: /刷新验证/ }).click();
+  await page.getByRole("tab", { name: "目录", exact: true }).click();
   await page.getByRole("button", { name: "研究", exact: true }).click();
   await page.locator(".ProseMirror").fill("保留未保存草稿");
   await page.getByRole("tab", { name: "图谱", exact: true }).click();

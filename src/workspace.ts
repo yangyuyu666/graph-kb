@@ -1,6 +1,7 @@
 import { contextMenu, closeContextMenu } from "./context-menu";
 import { branchLayout, graphTitle } from "./graph-layout";
 import { directoryIcon } from "./directory-icons";
+import { defaultWorkspaceView } from "./view-preferences";
 import { mountDocument } from "./document-view";
 import cytoscape, { type Core } from "cytoscape";
 import { zipSync, strToU8 } from "fflate";
@@ -30,11 +31,11 @@ export async function renderWorkspace(
   back: () => Promise<void>,
 ) {
   let graph: GraphData = { nodes: [], edges: [] },
-    view: "tree" | "graph" = "tree",
+    view: "tree" | "graph" = defaultWorkspaceView(),
     selected: string | undefined,
     cy: Core | undefined;
   const collapsed = new Set<string>();
-  const graphFilter = { center: "", scope: "neighbors", hops: "1", edgeType: "" };
+  const graphFilter = { center: "", scope: "neighbors", hops: "1", edgeType: "CHILD_OF" };
   const edgeLengthKey = `graph-kb:edge-length:${kb.id}`;
   let edgeLength = 220;
   try {

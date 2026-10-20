@@ -11,6 +11,7 @@ for (const embedded of [true, false]) test(`深色代码块与放大查看：${e
   if (embedded) {
     await page.goto("/");
     await page.getByRole("button", { name: new RegExp(`代码阅读 ${embedded}`) }).click();
+    await page.getByRole("tab", { name: "目录", exact: true }).click();
     await page.getByRole("button", { name: "代码示例", exact: true }).click();
   } else await page.goto(`/?node=${node.id}`);
   const block = page.locator(".milkdown-code-block").first();
