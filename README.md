@@ -44,9 +44,11 @@ Graph KB 是一款基于 **Tauri + Kùzu + Milkdown + Cytoscape.js** 的本地�
 
 ### 从源码体验
 
-安装 **Node.js 24+（含 npm）**，下载或克隆本仓库，在项目目录执行：
+安装 **Node.js 24+（含 npm）** 和 Git，按以下步骤克隆并运行；已下载源码时，在项目目录从 `npm ci` 开始：
 
 ```powershell
+git clone https://github.com/yangyuyu666/graph-kb.git
+cd graph-kb
 npm ci
 npm run dev
 ```

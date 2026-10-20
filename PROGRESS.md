@@ -9,7 +9,7 @@
 - 增加 `docs/DEVELOPMENT.md` 与 `docs/API.md`，承接环境、构建、测试、结构和接口细节。应用版本与业务代码未变，不重新打包安装。
 - 新增三张真实界面配图和 `scripts/capture-readme.mjs`，使用隔离演示库生成，不读取用户笔记。脚本已实际运行；目录、图谱和边详情截图均已查看。
 - 验证：三个文档的 28 个本地链接、5 个 JSON 示例通过；3 张图片均成功加载；本地 Markdown 排版预览已检查。截图脚本语法与 `git diff --check` 通过。未为纯文档修改重复运行后端全套测试。
-- **推送阻塞：** 当前仓库尚无 Git 远端，用户尚未提供目标 GitHub 仓库地址或新建仓库的账号/名称/可见性；本机 GitHub 认证尚未确认。文档先在本地提交，收到目标信息后继续推送，不将本地提交当作已发布。
+- **已发布：** 用户确认在 `yangyuyu666` 下新建公开 `graph-kb` 仓库，通过 Git Credential Manager 的官方浏览器授权成功，创建 [GitHub 仓库](https://github.com/yangyuyu666/graph-kb) 并将 `main` 推送至 `origin/main`。README 增加真实克隆地址；本机数据、构建产物、连接配置不随仓库发布。安装包尚未发布到 Releases。
 
 ## 目录图标统一（0.2.6）
 
