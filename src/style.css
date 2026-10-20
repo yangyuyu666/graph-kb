@@ -539,6 +539,34 @@ input {
   opacity: 0;
   cursor: default;
 }
+.tree-toggle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  border-radius: 6px;
+  color: #87939f;
+}
+.tree-toggle:not(:disabled):hover {
+  background: #e4e9ee;
+  color: #42596b;
+}
+.directory-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: #7c8c9d;
+}
+.directory-icon-folder,
+.directory-icon-folder-open { color: #647f97; }
+.tree-toggle .directory-icon {
+  width: 14px;
+  height: 14px;
+  color: inherit;
+}
+.tree-toggle.expanded .directory-icon { transform: rotate(90deg); }
+.tree-row.selected .tree-document .directory-icon { color: #257d82; }
 .tree-add,
 .tree-more {
   opacity: 0;
@@ -568,11 +596,6 @@ input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.tree-icon {
-  font-size: 16px;
-  color: #67646b;
-  flex-shrink: 0;
 }
 .tree-children {
   padding-left: 20px;

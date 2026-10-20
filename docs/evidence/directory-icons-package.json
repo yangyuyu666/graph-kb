@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-20",
+  "version": "0.2.6",
+  "artifact": "src-tauri/target/release/bundle/nsis/Graph KB_0.2.6_x64-setup.exe",
+  "bytes": 30421286,
+  "sha256": "61c35e8e8c5f18a97aaf9bd902de1e2c6c9b160190bb02b3d8633b0a0e1c82a7",
+  "buildExitCode": 0,
+  "uiTests": 4,
+  "nativeVerification": "Release executable, isolated data, empty PATH",
+  "screenshot": "docs/evidence/directory-icons.png",
+  "deployment": "Installed after user save-and-close confirmation",
+  "userDataModified": false,
+  "installedVersion": "0.2.6",
+  "installerExitCode": 0,
+  "installedServiceFilesMatched": 16,
+  "installedNativeVerification": "Passed with isolated data and empty PATH"
+}

@@ -1,5 +1,6 @@
 import { contextMenu, closeContextMenu } from "./context-menu";
 import { branchLayout, graphTitle } from "./graph-layout";
+import { directoryIcon } from "./directory-icons";
 import { mountDocument } from "./document-view";
 import cytoscape, { type Core } from "cytoscape";
 import { zipSync, strToU8 } from "fflate";
@@ -275,7 +276,7 @@ export async function renderWorkspace(
         `tree-row${selected === node.id ? " selected" : ""}${matches?.has(node.id) ? " search-match" : ""}`,
       );
       const toggle = button(
-        descendants.length ? (collapsed.has(node.id) ? "›" : "⌄") : "",
+        "",
         () => {
           collapsed.has(node.id)
             ? collapsed.delete(node.id)
@@ -284,6 +285,10 @@ export async function renderWorkspace(
         },
         "tree-toggle",
       );
+      if (descendants.length) {
+        toggle.append(directoryIcon("chevron"));
+        toggle.classList.toggle("expanded", !collapsed.has(node.id));
+      }
       toggle.disabled = !descendants.length;
       toggle.setAttribute(
         "aria-label",
@@ -294,7 +299,7 @@ export async function renderWorkspace(
       const doc = button("", () => showDocument(node.id), "node tree-document");
       doc.title = node.title;
       doc.append(
-        e("span", descendants.length ? "▱" : "▤", "tree-icon"),
+        directoryIcon(descendants.length ? (collapsed.has(node.id) ? "folder" : "folder-open") : "document"),
         e("span", node.title, "node-title"),
       );
       doc.setAttribute("aria-label", node.title);
