@@ -134,10 +134,25 @@ export async function renderWorkspace(
     new Option("全部类型", ""),
     ...Object.entries(kindNames).map(([k, v]) => new Option(v, k)),
   );
+  const refresh = button("刷新", async () => {
+    refresh.disabled = true;
+    refresh.textContent = "刷新中…";
+    refresh.setAttribute("aria-busy", "true");
+    try {
+      await runSearch();
+    } finally {
+      refresh.disabled = false;
+      refresh.textContent = "刷新";
+      refresh.setAttribute("aria-busy", "false");
+    }
+  });
+  refresh.id = "refresh-workspace";
+  refresh.title = "重新读取节点和关系，保留当前筛选与文档草稿";
   toolbar.append(
     tabs,
     searchForm,
     kind,
+    refresh,
     button("导入", () => importDialog()),
     button("导出", () => exportDialog()),
   );

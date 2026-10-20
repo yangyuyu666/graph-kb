@@ -184,6 +184,8 @@ try {
   await until(() =>
     main.evaluate('!!document.querySelector("#graph-canvas canvas")'),
   );
+  await main.evaluate(`document.querySelector('#refresh-workspace').click()`);
+  await until(() => main.evaluate(`!document.querySelector('#refresh-workspace').disabled && !!document.querySelector('#graph-canvas canvas')`));
   assert.equal(
     await main.evaluate(
       `document.querySelector('#graph-canvas canvas').width > 0`,
